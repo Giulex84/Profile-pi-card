@@ -31,13 +31,14 @@ export default function App() {
     bio: "",
     published: false,
   });
+  const [slug, setSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const path = window.location.pathname;
   if (path.startsWith("/p/")) {
-    const slug = path.replace("/p/", "");
-    return <PublicProfile slug={slug} />;
+    const s = path.replace("/p/", "");
+    return <PublicProfile slug={s} />;
   }
 
   useEffect(() => {
@@ -47,10 +48,7 @@ export default function App() {
 
         window.Pi.init({ version: "2.0", sandbox: false });
 
-        const authResult = await window.Pi.authenticate(
-          ["username"],
-          () => {}
-        );
+        const authResult = await window.Pi.authenticate(["username"], () => {});
 
         setPiUser({
           uid: authResult.user.uid,
@@ -78,7 +76,7 @@ export default function App() {
   useEffect(() => {
     saveProfile(profile);
     if (profile.published) {
-      saveProfileRemote(profile);
+      saveProfileRemote(profile).then((s) => setSlug(s));
     }
   }, [profile]);
 
@@ -101,6 +99,12 @@ export default function App() {
       <ProfileEditor profile={profile} onChange={setProfile} />
 
       <ProfileCard profile={profile} />
+
+      {slug && profile.published && (
+        <p style={styles.link}>
+          Public link: <a href={`/p/${slug}`}>{`/p/${slug}`}</a>
+        </p>
+      )}
 
       <button style={styles.delete} onClick={clearProfile}>
         Delete local profile data
@@ -127,6 +131,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 28,
     fontWeight: 600,
     marginBottom: 24,
+    textAlign: "center",
+  },
+  link: {
+    marginTop: 16,
+    fontSize: 13,
     textAlign: "center",
   },
   delete: {
