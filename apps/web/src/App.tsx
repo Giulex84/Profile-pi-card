@@ -1,6 +1,8 @@
-
+// apps/web/src/App.tsx
 
 import React, { useEffect, useState } from "react";
+import ProfileEditor from "./components/ProfileEditor";
+import ProfileCard from "./components/ProfileCard";
 
 declare global {
   interface Window {
@@ -13,8 +15,19 @@ type PiUser = {
   username?: string;
 };
 
+type Profile = {
+  displayName: string;
+  bio: string;
+  published: boolean;
+};
+
 export default function App() {
   const [piUser, setPiUser] = useState<PiUser | null>(null);
+  const [profile, setProfile] = useState<Profile>({
+    displayName: "",
+    bio: "",
+    published: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,10 +38,7 @@ export default function App() {
           throw new Error("Pi SDK not available");
         }
 
-        window.Pi.init({
-          version: "2.0",
-          sandbox: false,
-        });
+        window.Pi.init({ version: "2.0", sandbox: false });
 
         const authResult = await window.Pi.authenticate(
           ["username"],
@@ -39,7 +49,12 @@ export default function App() {
           uid: authResult.user.uid,
           username: authResult.user.username,
         });
-      } catch (err: any) {
+
+        setProfile((p) => ({
+          ...p,
+          displayName: authResult.user.username || "Pi User",
+        }));
+      } catch {
         setError("Unable to authenticate with Pi Network.");
       } finally {
         setLoading(false);
@@ -64,27 +79,10 @@ export default function App() {
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Pi Profile Card</h1>
-      <p style={styles.subtitle}>
-        A public profile you fully control.
-      </p>
 
-      <div style={styles.card}>
-        <div style={styles.row}>
-          <span style={styles.label}>Pi UID</span>
-          <span style={styles.value}>{piUser.uid}</span>
-        </div>
+      <ProfileEditor profile={profile} onChange={setProfile} />
 
-        {piUser.username && (
-          <div style={styles.row}>
-            <span style={styles.label}>Username</span>
-            <span style={styles.value}>{piUser.username}</span>
-          </div>
-        )}
-      </div>
-
-      <p style={styles.footer}>
-        This profile is managed through a third-party Pi Network application.
-      </p>
+      <ProfileCard profile={profile} />
     </div>
   );
 }
@@ -107,37 +105,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 28,
     fontWeight: 600,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    textAlign: "center",
     marginBottom: 24,
-    color: "#555",
-  },
-  card: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 12,
-    padding: 16,
-    backgroundColor: "#fafafa",
-  },
-  row: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  label: {
-    fontWeight: 500,
-    color: "#444",
-  },
-  value: {
-    fontFamily: "monospace",
-    fontSize: 13,
-  },
-  footer: {
-    marginTop: 24,
-    fontSize: 12,
-    color: "#666",
     textAlign: "center",
   },
 };
