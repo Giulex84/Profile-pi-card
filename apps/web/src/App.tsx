@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import ProfileEditor from "./components/ProfileEditor";
 import ProfileCard from "./components/ProfileCard";
 import { loadProfile, saveProfile, clearProfile } from "./utils/storage";
+import { saveProfileRemote } from "./utils/api";
+import PublicProfile from "./pages/PublicProfile";
 
 declare global {
   interface Window {
@@ -32,12 +34,16 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const path = window.location.pathname;
+  if (path.startsWith("/p/")) {
+    const slug = path.replace("/p/", "");
+    return <PublicProfile slug={slug} />;
+  }
+
   useEffect(() => {
     const initPi = async () => {
       try {
-        if (!window.Pi) {
-          throw new Error("Pi SDK not available");
-        }
+        if (!window.Pi) throw new Error();
 
         window.Pi.init({ version: "2.0", sandbox: false });
 
@@ -52,15 +58,13 @@ export default function App() {
         });
 
         const stored = loadProfile();
-        if (stored) {
-          setProfile(stored);
-        } else {
-          setProfile({
+        setProfile(
+          stored || {
             displayName: authResult.user.username || "Pi User",
             bio: "",
             published: false,
-          });
-        }
+          }
+        );
       } catch {
         setError("Unable to authenticate with Pi Network.");
       } finally {
@@ -73,6 +77,9 @@ export default function App() {
 
   useEffect(() => {
     saveProfile(profile);
+    if (profile.published) {
+      saveProfileRemote(profile);
+    }
   }, [profile]);
 
   if (loading) {
@@ -107,8 +114,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 420,
     margin: "0 auto",
     padding: "32px 16px",
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-    color: "#111",
+    fontFamily: "system-ui, sans-serif",
   },
   center: {
     minHeight: "100vh",
