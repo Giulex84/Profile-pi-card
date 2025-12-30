@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import ProfileEditor from "./components/ProfileEditor";
 import ProfileCard from "./components/ProfileCard";
+import { loadProfile, saveProfile, clearProfile } from "./utils/storage";
 
 declare global {
   interface Window {
@@ -50,10 +51,16 @@ export default function App() {
           username: authResult.user.username,
         });
 
-        setProfile((p) => ({
-          ...p,
-          displayName: authResult.user.username || "Pi User",
-        }));
+        const stored = loadProfile();
+        if (stored) {
+          setProfile(stored);
+        } else {
+          setProfile({
+            displayName: authResult.user.username || "Pi User",
+            bio: "",
+            published: false,
+          });
+        }
       } catch {
         setError("Unable to authenticate with Pi Network.");
       } finally {
@@ -63,6 +70,10 @@ export default function App() {
 
     initPi();
   }, []);
+
+  useEffect(() => {
+    saveProfile(profile);
+  }, [profile]);
 
   if (loading) {
     return <div style={styles.center}>Loading…</div>;
@@ -83,6 +94,10 @@ export default function App() {
       <ProfileEditor profile={profile} onChange={setProfile} />
 
       <ProfileCard profile={profile} />
+
+      <button style={styles.delete} onClick={clearProfile}>
+        Delete local profile data
+      </button>
     </div>
   );
 }
@@ -107,5 +122,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     marginBottom: 24,
     textAlign: "center",
+  },
+  delete: {
+    marginTop: 24,
+    background: "transparent",
+    border: "1px solid #e5e7eb",
+    padding: "8px 12px",
+    fontSize: 12,
+    cursor: "pointer",
   },
 };
