@@ -7,62 +7,40 @@ declare global {
   }
 }
 
-type PiUser = {
-  uid: string;
-  username: string;
-};
-
 export default function App() {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<PiUser | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [isPiBrowser, setIsPiBrowser] = useState(false);
 
   useEffect(() => {
-    if (!window.Pi) {
-      setError("Pi Browser not detected.");
-      setLoading(false);
-      return;
-    }
-
-    window.Pi.init({ version: "2.0" });
-
-    window.Pi.authenticate(
-      ["username"],
-      (auth: any) => {
-        setUser({
-          uid: auth.user.uid,
-          username: auth.user.username,
-        });
-        setLoading(false);
-      },
-      (err: any) => {
-        setError("Authentication failed.");
-        setLoading(false);
+    const checkPi = () => {
+      if (window.Pi) {
+        setIsPiBrowser(true);
+        setReady(true);
       }
-    );
+    };
+
+    checkPi();
+    const interval = setInterval(checkPi, 300);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      setReady(true);
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return <div style={styles.center}>Loading…</div>;
+  if (!ready) {
+    return <div style={{ textAlign: "center", marginTop: 40 }}>Loading...</div>;
   }
 
-  if (error) {
-    return <div style={styles.center}>{error}</div>;
+  if (!isPiBrowser) {
+    return (
+      <div style={{ textAlign: "center", marginTop: 40 }}>
+        Pi Browser not detected.
+      </div>
+    );
   }
 
-  if (!user) {
-    return <div style={styles.center}>No user.</div>;
-  }
-
-  return <PublicProfile username={user.username} />;
+  return <PublicProfile />;
 }
-
-const styles = {
-  center: {
-    display: "flex",
-    height: "100vh",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "18px",
-  },
-};
