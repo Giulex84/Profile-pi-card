@@ -1,21 +1,25 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
+declare global {
+  interface Window {
+    Pi?: any;
+  }
+}
 
 export default function PublicProfile() {
   const [username, setUsername] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [claimed, setClaimed] = useState(false);
 
-  useEffect(() => {
-    // Username mock pubblico (finché non colleghiamo backend)
-    // In review Pi è ACCETTATO
-    setTimeout(() => {
-      setUsername("Giulex84");
-      setLoading(false);
-    }, 500);
-  }, []);
-
-  if (loading) {
-    return <p>Loading public profile...</p>;
-  }
+  const loginWithPi = async () => {
+    try {
+      const scopes = ["username"];
+      const auth = await window.Pi.authenticate(scopes, () => {});
+      setUsername(auth.user.username);
+      setClaimed(true);
+    } catch (e) {
+      alert("Pi login failed");
+    }
+  };
 
   return (
     <div
@@ -28,26 +32,49 @@ export default function PublicProfile() {
         marginInline: "auto",
       }}
     >
-      <h2 style={{ marginBottom: 8 }}>@{username}</h2>
+      {!claimed && (
+        <>
+          <p>Claim your Pi Profile Card</p>
+          <button
+            onClick={loginWithPi}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: "#6c2bd9",
+              color: "#fff",
+              fontWeight: 600,
+            }}
+          >
+            Login with Pi
+          </button>
+        </>
+      )}
 
-      {/* BADGE */}
-      <div
-        style={{
-          display: "inline-block",
-          padding: "6px 12px",
-          borderRadius: 20,
-          background: "#f5c518",
-          color: "#000",
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
-        Pi Pioneer
-      </div>
+      {claimed && (
+        <>
+          <h2>@{username}</h2>
 
-      <p style={{ marginTop: 16, color: "#666", fontSize: 14 }}>
-        This is a public Pi profile card.
-      </p>
+          <div
+            style={{
+              display: "inline-block",
+              padding: "6px 12px",
+              borderRadius: 20,
+              background: "#4caf50",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: 14,
+              marginTop: 8,
+            }}
+          >
+            Verified Pi User
+          </div>
+
+          <p style={{ marginTop: 16, fontSize: 14, color: "#666" }}>
+            This profile is claimed via Pi Network.
+          </p>
+        </>
+      )}
     </div>
   );
 }
