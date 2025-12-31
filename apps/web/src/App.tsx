@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PublicProfile from "./PublicProfile";
 
 declare global {
   interface Window {
@@ -6,110 +7,29 @@ declare global {
   }
 }
 
-type PiUser = {
-  uid: string;
-  username: string;
-};
-
 export default function App() {
-  const [user, setUser] = useState<PiUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isPiBrowser, setIsPiBrowser] = useState(false);
 
   useEffect(() => {
-    let attempts = 0;
-
-    const initPi = () => {
-      attempts++;
-
-      if (window.Pi && typeof window.Pi.authenticate === "function") {
-        try {
-          window.Pi.init({ version: "2.0" });
-
-          window.Pi.authenticate(
-            ["username"],
-            (auth: any) => {
-              setUser({
-                uid: auth.user.uid,
-                username: auth.user.username,
-              });
-              setLoading(false);
-            },
-            () => {
-              setError("Authentication cancelled.");
-              setLoading(false);
-            }
-          );
-          return;
-        } catch {
-          // ignore and retry
-        }
-      }
-
-      if (attempts < 10) {
-        setTimeout(initPi, 300);
-      } else {
-        setError("Pi Browser required.");
-        setLoading(false);
-      }
-    };
-
-    initPi();
+    if (window.Pi) {
+      setIsPiBrowser(true);
+    }
   }, []);
 
-  if (loading) {
-    return <div style={center}>Loading…</div>;
-  }
-
-  if (error) {
-    return <div style={center}>{error}</div>;
-  }
-
-  if (!user) {
-    return <div style={center}>No user.</div>;
-  }
-
-  const shareUrl = `${window.location.origin}/u/${user.username}`;
-
+  // 🔓 SEMPRE VISIBILE A TUTTI
   return (
-    <div style={card}>
+    <div style={{ padding: "40px", textAlign: "center" }}>
       <h1>Profile Pi Card</h1>
 
-      <p>
-        <strong>Username</strong><br />
-        {user.username}
-      </p>
+      {/* Profilo pubblico: SEMPRE */}
+      <PublicProfile />
 
-      <p>
-        <strong>User ID</strong><br />
-        {user.uid}
-      </p>
-
-      <p>
-        <strong>Public profile</strong><br />
-        <a href={shareUrl}>{shareUrl}</a>
-      </p>
-
-      <p style={{ fontSize: 12, opacity: 0.6 }}>
-        You can share this link publicly.
-      </p>
+      {/* Funzioni Pi: SOLO se Pi Browser */}
+      {isPiBrowser && (
+        <p style={{ marginTop: 20, color: "#666" }}>
+          Pi Browser detected – advanced features enabled
+        </p>
+      )}
     </div>
   );
 }
-
-const center: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  height: "100vh",
-  fontSize: 18,
-};
-
-const card: React.CSSProperties = {
-  maxWidth: 420,
-  margin: "40px auto",
-  padding: 24,
-  border: "1px solid #ddd",
-  borderRadius: 12,
-  fontFamily: "sans-serif",
-};
