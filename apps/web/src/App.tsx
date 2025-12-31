@@ -1,149 +1,59 @@
-// apps/web/src/App.tsx
-
-import React, { useEffect, useState } from "react";
-import ProfileEditor from "./components/ProfileEditor";
-import ProfileCard from "./components/ProfileCard";
-import { loadProfile, saveProfile, clearProfile } from "./utils/storage";
-import { saveProfileRemote } from "./utils/api";
-import PublicProfile from "./pages/PublicProfile";
+import { useEffect, useState } from "react";
 
 declare global {
   interface Window {
-    Pi?: any;
+    Pi: any;
   }
 }
 
 type PiUser = {
   uid: string;
-  username?: string;
-};
-
-type Profile = {
-  displayName: string;
-  bio: string;
-  published: boolean;
+  username: string;
 };
 
 export default function App() {
-  const [piUser, setPiUser] = useState<PiUser | null>(null);
-  const [profile, setProfile] = useState<Profile>({
-    displayName: "",
-    bio: "",
-    published: false,
-  });
-  const [slug, setSlug] = useState<string | null>(null);
+  const [user, setUser] = useState<PiUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const path = window.location.pathname;
-  if (path.startsWith("/p/")) {
-    const s = path.replace("/p/", "");
-    return <PublicProfile slug={s} />;
-  }
 
   useEffect(() => {
-    const initPi = async () => {
-      try {
-        if (!window.Pi) throw new Error();
+    if (!window.Pi) {
+      setLoading(false);
+      return;
+    }
 
-        window.Pi.init({ version: "2.0", sandbox: false });
-
-        const authResult = await window.Pi.authenticate(["username"], () => {});
-
-        setPiUser({
+    window.Pi.authenticate(
+      ["username"],
+      (authResult: any) => {
+        setUser({
           uid: authResult.user.uid,
           username: authResult.user.username,
         });
-
-        const stored = loadProfile();
-        setProfile(
-          stored || {
-            displayName: authResult.user.username || "Pi User",
-            bio: "",
-            published: false,
-          }
-        );
-      } catch {
-        setError("Unable to authenticate with Pi Network.");
-      } finally {
+        setLoading(false);
+      },
+      () => {
         setLoading(false);
       }
-    };
-
-    initPi();
+    );
   }, []);
 
-  useEffect(() => {
-    saveProfile(profile);
-    if (profile.published) {
-      saveProfileRemote(profile).then((s) => setSlug(s));
-    }
-  }, [profile]);
-
   if (loading) {
-    return <div style={styles.center}>Loading…</div>;
+    return <div style={{ textAlign: "center", marginTop: 40 }}>Loading…</div>;
   }
 
-  if (error) {
-    return <div style={styles.center}>{error}</div>;
-  }
-
-  if (!piUser) {
-    return <div style={styles.center}>Authentication required.</div>;
+  if (!user) {
+    return (
+      <div style={{ textAlign: "center", marginTop: 40 }}>
+        Pi Browser authentication required.
+      </div>
+    );
   }
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Pi Profile Card</h1>
-
-      <ProfileEditor profile={profile} onChange={setProfile} />
-
-      <ProfileCard profile={profile} />
-
-      {slug && profile.published && (
-        <p style={styles.link}>
-          Public link: <a href={`/p/${slug}`}>{`/p/${slug}`}</a>
-        </p>
-      )}
-
-      <button style={styles.delete} onClick={clearProfile}>
-        Delete local profile data
-      </button>
+    <div style={{ maxWidth: 420, margin: "40px auto", fontFamily: "sans-serif" }}>
+      <h1>Profile Pi Card</h1>
+      <p><strong>Username:</strong> {user.username}</p>
+      <p><strong>User ID:</strong> {user.uid}</p>
+      <p>This profile is private until published.</p>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    maxWidth: 420,
-    margin: "0 auto",
-    padding: "32px 16px",
-    fontFamily: "system-ui, sans-serif",
-  },
-  center: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "system-ui, sans-serif",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 600,
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  link: {
-    marginTop: 16,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  delete: {
-    marginTop: 24,
-    background: "transparent",
-    border: "1px solid #e5e7eb",
-    padding: "8px 12px",
-    fontSize: 12,
-    cursor: "pointer",
-  },
-};
