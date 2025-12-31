@@ -1,51 +1,38 @@
 import { useEffect, useState } from "react";
 import PublicProfile from "./PublicProfile";
 
+declare global {
+  interface Window {
+    Pi?: any;
+  }
+}
+
 export default function App() {
-  const [status, setStatus] = useState<"loading" | "ok" | "nopi">("loading");
+  const [ready, setReady] = useState(false);
+  const [isPiBrowser, setIsPiBrowser] = useState(false);
 
   useEffect(() => {
-    const ua = navigator.userAgent.toLowerCase();
-
-    const isPiUA =
-      ua.includes("pibrowser") ||
-      ua.includes("pi browser") ||
-      ua.includes("pi-network");
-
-    if (isPiUA) {
-      setStatus("ok");
-      return;
+    if (typeof window !== "undefined" && window.Pi) {
+      setIsPiBrowser(true);
+      window.Pi.init({ version: "2.0" });
+      setReady(true);
+    } else {
+      setIsPiBrowser(false);
     }
-
-    // fallback: wait a bit for injected SDK
-    let tries = 0;
-    const interval = setInterval(() => {
-      tries++;
-      if ((window as any).Pi) {
-        setStatus("ok");
-        clearInterval(interval);
-      }
-      if (tries > 10) {
-        setStatus("nopi");
-        clearInterval(interval);
-      }
-    }, 300);
-
-    return () => clearInterval(interval);
   }, []);
 
-  if (status === "loading") {
+  if (!isPiBrowser) {
     return (
       <div style={{ textAlign: "center", marginTop: 40 }}>
-        Loading...
+        Pi Browser not detected.
       </div>
     );
   }
 
-  if (status === "nopi") {
+  if (!ready) {
     return (
       <div style={{ textAlign: "center", marginTop: 40 }}>
-        Pi Browser not detected.
+        Loading...
       </div>
     );
   }
