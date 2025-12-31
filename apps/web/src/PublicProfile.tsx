@@ -1,23 +1,8 @@
-type Props = {
-  username: string;
-};
-
-export default function PublicProfile({ username }: Props) {
+export default function PublicProfile() {
   return (
-    <div style={styles.container}>
-      <h1>{username}</h1>
-      <p>This is your public profile card.</p>
+    <div style={{ textAlign: "center", marginTop: 40 }}>
+      <h1>Profile Pi Card</h1>
+      <p>Public profile loaded successfully.</p>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    maxWidth: "480px",
-    margin: "40px auto",
-    padding: "24px",
-    border: "1px solid #ddd",
-    borderRadius: "12px",
-    textAlign: "center" as const,
-  },
-};
