@@ -3,7 +3,7 @@ import PublicProfile from "./PublicProfile";
 
 declare global {
   interface Window {
-    Pi: any;
+    Pi?: any;
   }
 }
 
@@ -13,64 +13,56 @@ type PiUser = {
 };
 
 export default function App() {
-  const [user, setUser] = useState<PiUser | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const params = new URLSearchParams(window.location.search);
-  const publicUser = params.get("user");
+  const [user, setUser] = useState<PiUser | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (publicUser) {
+    if (!window.Pi) {
+      setError("Pi Browser not detected.");
       setLoading(false);
       return;
     }
 
-    if (!window.Pi) {
-      setLoading(false);
-      return;
-    }
+    window.Pi.init({ version: "2.0" });
 
     window.Pi.authenticate(
       ["username"],
-      (authResult: any) => {
+      (auth: any) => {
         setUser({
-          uid: authResult.user.uid,
-          username: authResult.user.username,
+          uid: auth.user.uid,
+          username: auth.user.username,
         });
         setLoading(false);
       },
-      () => setLoading(false)
+      (err: any) => {
+        setError("Authentication failed.");
+        setLoading(false);
+      }
     );
-  }, [publicUser]);
+  }, []);
 
   if (loading) {
-    return <div style={{ textAlign: "center", marginTop: 40 }}>Loading…</div>;
+    return <div style={styles.center}>Loading…</div>;
   }
 
-  if (publicUser) {
-    return <PublicProfile username={publicUser} />;
+  if (error) {
+    return <div style={styles.center}>{error}</div>;
   }
 
   if (!user) {
-    return (
-      <div style={{ textAlign: "center", marginTop: 40 }}>
-        Pi Browser authentication required.
-      </div>
-    );
+    return <div style={styles.center}>No user.</div>;
   }
 
-  const shareUrl = `${window.location.origin}?user=${user.username}`;
-
-  return (
-    <div style={{ maxWidth: 420, margin: "40px auto", fontFamily: "sans-serif" }}>
-      <h1>Profile Pi Card</h1>
-      <p><strong>Username:</strong> {user.username}</p>
-      <p><strong>User ID:</strong> {user.uid}</p>
-
-      <p>
-        <strong>Public link:</strong><br />
-        <a href={shareUrl}>{shareUrl}</a>
-      </p>
-    </div>
-  );
+  return <PublicProfile username={user.username} />;
 }
+
+const styles = {
+  center: {
+    display: "flex",
+    height: "100vh",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "18px",
+  },
+};
