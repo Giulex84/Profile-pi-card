@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import PublicProfile from "./PublicProfile";
+import { useEffect, useState } from "react";
 
 declare global {
   interface Window {
@@ -8,28 +8,22 @@ declare global {
 }
 
 export default function App() {
-  const [isPiBrowser, setIsPiBrowser] = useState(false);
+  const [piReady, setPiReady] = useState(false);
 
   useEffect(() => {
     if (window.Pi) {
-      setIsPiBrowser(true);
+      window.Pi.init({ version: "2.0" });
+      setPiReady(true);
     }
   }, []);
 
-  // 🔓 SEMPRE VISIBILE A TUTTI
   return (
-    <div style={{ padding: "40px", textAlign: "center" }}>
+    <div style={{ textAlign: "center", paddingTop: 40 }}>
       <h1>Profile Pi Card</h1>
 
-      {/* Profilo pubblico: SEMPRE */}
-      <PublicProfile />
+      {!piReady && <p>Pi Browser required.</p>}
 
-      {/* Funzioni Pi: SOLO se Pi Browser */}
-      {isPiBrowser && (
-        <p style={{ marginTop: 20, color: "#666" }}>
-          Pi Browser detected – advanced features enabled
-        </p>
-      )}
+      {piReady && <PublicProfile />}
     </div>
   );
 }
