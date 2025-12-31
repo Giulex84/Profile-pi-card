@@ -9,33 +9,50 @@ declare global {
 
 export default function App() {
   const [ready, setReady] = useState(false);
-  const [isPiBrowser, setIsPiBrowser] = useState(false);
+  const [isPiBrowser, setIsPiBrowser] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.Pi) {
-      setIsPiBrowser(true);
-      window.Pi.init({ version: "2.0" });
+    const check = () => {
+      if (window.Pi && typeof window.Pi.init === "function") {
+        try {
+          window.Pi.init({ version: "2.0" });
+          setIsPiBrowser(true);
+        } catch {
+          setIsPiBrowser(false);
+        }
+      } else {
+        setIsPiBrowser(false);
+      }
       setReady(true);
-    } else {
-      setIsPiBrowser(false);
-    }
+    };
+
+    // small delay to allow Pi Browser injection
+    setTimeout(check, 300);
   }, []);
 
-  if (!isPiBrowser) {
+  if (!ready) {
     return (
-      <div style={{ textAlign: "center", marginTop: 40 }}>
-        Pi Browser not detected.
+      <div style={centerStyle}>
+        Loading...
       </div>
     );
   }
 
-  if (!ready) {
+  if (!isPiBrowser) {
     return (
-      <div style={{ textAlign: "center", marginTop: 40 }}>
-        Loading...
+      <div style={centerStyle}>
+        Pi Browser not detected.
       </div>
     );
   }
 
   return <PublicProfile />;
 }
+
+const centerStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "100vh",
+  fontSize: "18px",
+};
