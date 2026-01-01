@@ -8,6 +8,14 @@ declare global {
 
 let initialized = false;
 
+export type PiAuthPayload = {
+  accessToken: string;
+  user: {
+    uid: string;
+    username: string;
+  };
+};
+
 export function initPiSdk(): void {
   if (initialized) return;
 
@@ -27,15 +35,33 @@ export function initPiSdk(): void {
   initialized = true;
 }
 
-export async function authenticatePi(): Promise<any> {
+export async function authenticatePi(): Promise<PiAuthPayload> {
   if (!window.Pi || typeof window.Pi.authenticate !== "function") {
     throw new Error("Pi.authenticate not available");
   }
 
-  return await window.Pi.authenticate(
+  const authResult = await window.Pi.authenticate(
     ["username", "payments"],
     {
       onIncompletePaymentFound: () => {},
     }
   );
+
+  if (
+    !authResult ||
+    !authResult.accessToken ||
+    !authResult.user ||
+    !authResult.user.uid ||
+    !authResult.user.username
+  ) {
+    throw new Error("Invalid Pi auth result");
+  }
+
+  return {
+    accessToken: authResult.accessToken,
+    user: {
+      uid: authResult.user.uid,
+      username: authResult.user.username,
+    },
+  };
 }
