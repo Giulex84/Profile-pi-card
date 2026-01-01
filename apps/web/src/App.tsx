@@ -1,54 +1,292 @@
-import { useEffect, useState } from "react";
-import { authenticatePi } from "./pi";
-import Loading from "./components/Loading";
+// apps/web/src/App.tsx
 
-type PiUser = {
-  username: string;
-  uid: string;
+import { useEffect, useState } from "react";
+import { isPiBrowser, initPiSdk, authenticatePi } from "./pi";
+
+type AppState =
+  | "detecting"
+  | "pi-required"
+  | "ready"
+  | "authenticating"
+  | "authenticated"
+  | "error";
+
+type VerifiedAction = {
+  id: string;
+  title: string;
+  category: string;
+  note?: string;
+  createdAt: string;
 };
 
+const STORAGE_KEY = "pi_verified_actions";
+
 export default function App() {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<PiUser | null>(null);
+  const [state, setState] = useState<AppState>("detecting");
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [actions, setActions] = useState<VerifiedAction[]>([]);
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
+  const [note, setNote] = useState("");
 
+  // 🔍 Detection + init (ONCE)
   useEffect(() => {
-    const run = async () => {
-      try {
-        const auth = await authenticatePi();
-        setUser({
-          username: auth.user.username,
-          uid: auth.user.uid,
-        });
-      } catch (err: any) {
-        setError(err.message || "Pi Browser required");
-      } finally {
-        setLoading(false);
+    try {
+      if (!isPiBrowser()) {
+        setState("pi-required");
+        return;
       }
-    };
 
-    run();
+      initPiSdk();
+      loadActions();
+      setState("ready");
+    } catch (err: any) {
+      setError(err.message || "Initialization error");
+      setState("error");
+    }
   }, []);
 
-  if (loading) {
-    return <Loading text="Initializing Pi authentication..." />;
+  function loadActions() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        setActions(JSON.parse(raw));
+      } catch {
+        setActions([]);
+      }
+    }
   }
 
-  if (error) {
+  function saveActions(next: VerifiedAction[]) {
+    setActions(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+
+  async function handleLogin() {
+    setError(null);
+    setState("authenticating");
+
+    try {
+      const auth = await authenticatePi();
+      setUser(auth.user);
+      setState("authenticated");
+    } catch (err: any) {
+      setError(err?.message || "Authentication failed");
+      setState("ready");
+    }
+  }
+
+  function addAction() {
+    if (!title || !category) return;
+
+    const next: VerifiedAction = {
+      id: crypto.randomUUID(),
+      title,
+      category,
+      note,
+      createdAt: new Date().toISOString(),
+    };
+
+    saveActions([next, ...actions]);
+    setTitle("");
+    setCategory("");
+    setNote("");
+  }
+
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(actions, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pi-verified-actions.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // 🧠 UI STATES
+
+  if (state === "detecting") {
+    return <Centered>Detecting Pi Browser…</Centered>;
+  }
+
+  if (state === "pi-required") {
     return (
-      <div style={{ textAlign: "center", marginTop: "40vh" }}>
+      <Centered>
         <h2>Pi Browser Required</h2>
-        <p>This utility works exclusively inside the Pi Browser.</p>
-      </div>
+        <p>Please open this dApp inside Pi Browser.</p>
+      </Centered>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <Centered>
+        <h2>Error</h2>
+        <p>{error}</p>
+      </Centered>
     );
   }
 
   return (
-    <div style={{ textAlign: "center", padding: 20 }}>
-      <h1>Pi Identity Hub</h1>
-      <p>Authenticated successfully</p>
-      <p><strong>Username:</strong> {user?.username}</p>
-      <p><strong>UID:</strong> {user?.uid}</p>
+    <div style={styles.app}>
+      <header style={styles.header}>
+        <h1>Profile Pi Card</h1>
+        <p>Pi Verified Actions</p>
+      </header>
+
+      {state !== "authenticated" && (
+        <section style={styles.card}>
+          <button
+            style={styles.primaryButton}
+            onClick={handleLogin}
+            disabled={state === "authenticating"}
+          >
+            {state === "authenticating"
+              ? "Connecting…"
+              : "Connect with Pi"}
+          </button>
+
+          {error && <p style={styles.error}>{error}</p>}
+        </section>
+      )}
+
+      {state === "authenticated" && (
+        <>
+          <section style={styles.card}>
+            <h2>New Verified Action</h2>
+
+            <input
+              placeholder="Action title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={styles.input}
+            />
+
+            <input
+              placeholder="Category (e.g. Attendance, Task, Claim)"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={styles.input}
+            />
+
+            <textarea
+              placeholder="Optional note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              style={styles.textarea}
+            />
+
+            <button style={styles.primaryButton} onClick={addAction}>
+              Add Action
+            </button>
+          </section>
+
+          <section style={styles.card}>
+            <h2>Action History</h2>
+
+            {actions.length === 0 && <p>No actions yet.</p>}
+
+            {actions.map((a) => (
+              <div key={a.id} style={styles.action}>
+                <strong>{a.title}</strong>
+                <span>{a.category}</span>
+                {a.note && <p>{a.note}</p>}
+                <small>{new Date(a.createdAt).toLocaleString()}</small>
+              </div>
+            ))}
+
+            {actions.length > 0 && (
+              <button style={styles.secondaryButton} onClick={exportJSON}>
+                Export JSON
+              </button>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }
+
+function Centered({ children }: { children: any }) {
+  return (
+    <div style={styles.centered}>
+      <div style={styles.card}>{children}</div>
+    </div>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  app: {
+    minHeight: "100vh",
+    background: "#0b0f1a",
+    color: "#fff",
+    padding: "1rem",
+    maxWidth: 480,
+    margin: "0 auto",
+  },
+  header: {
+    textAlign: "center",
+    marginBottom: "1.5rem",
+  },
+  card: {
+    background: "#141a2a",
+    borderRadius: 12,
+    padding: "1rem",
+    marginBottom: "1rem",
+  },
+  input: {
+    width: "100%",
+    padding: "0.6rem",
+    marginBottom: "0.6rem",
+    borderRadius: 8,
+    border: "none",
+  },
+  textarea: {
+    width: "100%",
+    padding: "0.6rem",
+    marginBottom: "0.6rem",
+    borderRadius: 8,
+    border: "none",
+    minHeight: 60,
+  },
+  primaryButton: {
+    width: "100%",
+    padding: "0.7rem",
+    borderRadius: 10,
+    border: "none",
+    background: "#facc15",
+    color: "#000",
+    fontWeight: 600,
+  },
+  secondaryButton: {
+    width: "100%",
+    padding: "0.6rem",
+    borderRadius: 10,
+    border: "none",
+    background: "#1f2937",
+    color: "#fff",
+    marginTop: "0.8rem",
+  },
+  action: {
+    background: "#0b1020",
+    borderRadius: 8,
+    padding: "0.6rem",
+    marginBottom: "0.5rem",
+  },
+  centered: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#0b0f1a",
+    color: "#fff",
+    padding: "1rem",
+  },
+  error: {
+    color: "#f87171",
+    marginTop: "0.5rem",
+  },
+};
