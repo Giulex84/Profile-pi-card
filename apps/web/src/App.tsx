@@ -11,31 +11,34 @@ type AppState =
   | "authenticated"
   | "error";
 
-type ProofType =
+type ActivityType =
   | "event"
   | "task"
   | "community"
   | "beta"
   | "identity"
-  | "supporter";
+  | "supporter"
+  | "custom";
 
-type Proof = {
+type Activity = {
   id: string;
-  type: ProofType;
+  type: ActivityType;
   title: string;
   note?: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
-const STORAGE_KEY = "pi_proofs";
+const STORAGE_KEY = "pi_activity_journal";
 
-const PROOF_TEMPLATES: Record<ProofType, string> = {
-  event: "Event Attendance",
-  task: "Task Completed",
-  community: "Community Contribution",
-  beta: "Beta Tester",
-  identity: "Identity Verification",
-  supporter: "Early Supporter",
+const ACTIVITY_LABELS: Record<ActivityType, string> = {
+  event: "Event attendance",
+  task: "Task completed",
+  community: "Community contribution",
+  beta: "Beta tester",
+  identity: "Identity verification",
+  supporter: "Early supporter",
+  custom: "Custom entry",
 };
 
 function uuid(): string {
@@ -51,8 +54,11 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [auth, setAuth] = useState<PiAuthPayload | null>(null);
 
-  const [proofs, setProofs] = useState<Proof[]>([]);
-  const [selectedType, setSelectedType] = useState<ProofType | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [type, setType] = useState<ActivityType>("event");
+  const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -67,7 +73,7 @@ export default function App() {
         if ((window as any).Pi) {
           try {
             initPiSdk();
-            loadProofs();
+            loadActivities();
             if (!cancelled) setState("ready");
             return;
           } catch (err: any) {
@@ -91,19 +97,19 @@ export default function App() {
     };
   }, []);
 
-  function loadProofs() {
+  function loadActivities() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        setProofs(JSON.parse(raw));
+        setActivities(JSON.parse(raw));
       } catch {
-        setProofs([]);
+        setActivities([]);
       }
     }
   }
 
-  function saveProofs(next: Proof[]) {
-    setProofs(next);
+  function saveActivities(next: Activity[]) {
+    setActivities(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
 
@@ -113,10 +119,6 @@ export default function App() {
 
     try {
       const payload = await authenticatePi();
-
-      // 🔒 backend-ready: invia payload.accessToken + proofs
-      console.log("Pi auth payload:", payload);
-
       setAuth(payload);
       setState("authenticated");
     } catch (err: any) {
@@ -125,43 +127,49 @@ export default function App() {
     }
   }
 
-  function addProof() {
-    if (!selectedType) return;
-
-    const next: Proof = {
-      id: uuid(),
-      type: selectedType,
-      title: PROOF_TEMPLATES[selectedType],
-      note: note || undefined,
-      createdAt: new Date().toISOString(),
-    };
-
-    saveProofs([next, ...proofs]);
-    setSelectedType(null);
+  function resetForm() {
+    setType("event");
+    setTitle("");
     setNote("");
+    setEditingId(null);
   }
 
-  function exportJSON() {
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            user: auth?.user,
-            proofs,
-          },
-          null,
-          2
-        ),
-      ],
-      { type: "application/json" }
-    );
+  function submitActivity() {
+    if (!title.trim()) return;
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pi-profile-card.json";
-    a.click();
-    URL.revokeObjectURL(url);
+    const now = new Date().toISOString();
+
+    if (editingId) {
+      const next = activities.map((a) =>
+        a.id === editingId
+          ? { ...a, type, title, note, updatedAt: now }
+          : a
+      );
+      saveActivities(next);
+    } else {
+      const next: Activity = {
+        id: uuid(),
+        type,
+        title,
+        note: note || undefined,
+        createdAt: now,
+      };
+      saveActivities([next, ...activities]);
+    }
+
+    resetForm();
+  }
+
+  function editActivity(a: Activity) {
+    setEditingId(a.id);
+    setType(a.type);
+    setTitle(a.title);
+    setNote(a.note || "");
+  }
+
+  function deleteActivity(id: string) {
+    if (!confirm("Remove this activity from your journal?")) return;
+    saveActivities(activities.filter((a) => a.id !== id));
   }
 
   if (state === "detecting") {
@@ -190,9 +198,7 @@ export default function App() {
     <div style={styles.app}>
       <header style={styles.header}>
         <h1>Profile Pi Card</h1>
-        <p style={styles.subtitle}>
-          Your Pi identity card with reusable activity proofs.
-        </p>
+        <p style={styles.subtitle}>Your personal Pi activity journal</p>
       </header>
 
       {state !== "authenticated" && (
@@ -214,61 +220,90 @@ export default function App() {
           <section style={styles.profileCard}>
             <div>
               <strong>@{auth?.user.username}</strong>
-              <p style={{ opacity: 0.8 }}>{proofs.length} proofs</p>
+              <p style={{ opacity: 0.8 }}>
+                {activities.length} activities recorded
+              </p>
             </div>
-            <div style={styles.badge}>PI VERIFIED</div>
           </section>
 
           <section style={styles.card}>
-            <h2>Add Proof</h2>
+            <h2>{editingId ? "Edit activity" : "Add activity"}</h2>
 
-            <div style={styles.grid}>
-              {(Object.keys(PROOF_TEMPLATES) as ProofType[]).map((k) => (
-                <button
-                  key={k}
-                  style={{
-                    ...styles.templateButton,
-                    borderColor:
-                      selectedType === k ? "#facc15" : "transparent",
-                  }}
-                  onClick={() => setSelectedType(k)}
-                >
-                  {PROOF_TEMPLATES[k]}
-                </button>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as ActivityType)}
+              style={styles.input}
+            >
+              {Object.keys(ACTIVITY_LABELS).map((k) => (
+                <option key={k} value={k}>
+                  {ACTIVITY_LABELS[k as ActivityType]}
+                </option>
               ))}
-            </div>
+            </select>
 
-            {selectedType && (
-              <>
-                <textarea
-                  placeholder="Optional note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  style={styles.textarea}
-                />
-                <button style={styles.primaryButton} onClick={addProof}>
-                  Save Proof
-                </button>
-              </>
-            )}
-          </section>
+            <input
+              placeholder="Activity title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={styles.input}
+            />
 
-          <section style={styles.card}>
-            <h2>Your Proofs</h2>
+            <textarea
+              placeholder="Optional note (for your reference)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              style={styles.textarea}
+            />
 
-            {proofs.map((p) => (
-              <div key={p.id} style={styles.proof}>
-                <strong>{p.title}</strong>
-                {p.note && <p>{p.note}</p>}
-                <small>{new Date(p.createdAt).toLocaleString()}</small>
-              </div>
-            ))}
+            <button style={styles.primaryButton} onClick={submitActivity}>
+              {editingId ? "Update entry" : "Save to journal"}
+            </button>
 
-            {proofs.length > 0 && (
-              <button style={styles.secondaryButton} onClick={exportJSON}>
-                Export Profile Card
+            {editingId && (
+              <button style={styles.secondaryButton} onClick={resetForm}>
+                Cancel editing
               </button>
             )}
+          </section>
+
+          <section style={styles.card}>
+            <h2>Your activity history</h2>
+
+            {activities.length === 0 && (
+              <p>
+                Start by adding your first activity to build your journal over
+                time.
+              </p>
+            )}
+
+            {activities.map((a) => (
+              <div key={a.id} style={styles.entry}>
+                <strong>{a.title}</strong>
+                <p style={{ opacity: 0.8 }}>
+                  {ACTIVITY_LABELS[a.type]}
+                </p>
+                <small>
+                  Recorded on {new Date(a.createdAt).toLocaleString()}
+                  {a.updatedAt && " · updated"}
+                </small>
+                {a.note && <p>{a.note}</p>}
+
+                <div style={styles.entryActions}>
+                  <button
+                    style={styles.linkButton}
+                    onClick={() => editActivity(a)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    style={styles.linkButton}
+                    onClick={() => deleteActivity(a.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
           </section>
         </>
       )}
@@ -294,7 +329,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 auto",
   },
   header: { textAlign: "center", marginBottom: "1rem" },
-  subtitle: { opacity: 0.85, fontSize: "0.95rem" },
+  subtitle: { opacity: 0.85 },
   card: {
     background: "#141a2a",
     borderRadius: 14,
@@ -302,35 +337,17 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: "1rem",
   },
   profileCard: {
-    background: "linear-gradient(135deg, #1f2937, #0b1020)",
-    borderRadius: 16,
+    background: "#0b1020",
+    borderRadius: 14,
     padding: "1rem",
     marginBottom: "1rem",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
   },
-  badge: {
-    background: "#facc15",
-    color: "#000",
-    padding: "0.4rem 0.6rem",
-    borderRadius: 10,
-    fontSize: "0.75rem",
-    fontWeight: 700,
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "0.6rem",
-    marginBottom: "0.8rem",
-  },
-  templateButton: {
-    background: "#0b1020",
-    borderRadius: 10,
+  input: {
+    width: "100%",
     padding: "0.6rem",
-    border: "2px solid transparent",
-    color: "#fff",
-    textAlign: "center",
+    marginBottom: "0.6rem",
+    borderRadius: 8,
+    border: "none",
   },
   textarea: {
     width: "100%",
@@ -356,13 +373,24 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     background: "#1f2937",
     color: "#fff",
-    marginTop: "0.8rem",
+    marginTop: "0.5rem",
   },
-  proof: {
+  entry: {
     background: "#0b1020",
     borderRadius: 10,
     padding: "0.6rem",
-    marginBottom: "0.5rem",
+    marginBottom: "0.6rem",
+  },
+  entryActions: {
+    display: "flex",
+    gap: "1rem",
+    marginTop: "0.4rem",
+  },
+  linkButton: {
+    background: "none",
+    border: "none",
+    color: "#facc15",
+    padding: 0,
   },
   centered: {
     minHeight: "100vh",
