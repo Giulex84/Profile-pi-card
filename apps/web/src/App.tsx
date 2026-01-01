@@ -9,65 +9,69 @@ declare global {
 
 export default function App() {
   const [status, setStatus] = useState<
-    "checking" | "not_pi" | "auth" | "ready"
-  >("checking");
+    "loading" | "auth" | "ready"
+  >("loading");
+
   const [user, setUser] = useState<{
     uid: string;
     username: string;
   } | null>(null);
 
   useEffect(() => {
-    if (!window.Pi) {
-      setStatus("not_pi");
-      return;
-    }
+    let attempts = 0;
 
-    try {
-      window.Pi.init({ version: "2.0" });
+    const waitForPi = () => {
+      attempts++;
 
-      window.Pi.authenticate(
-        ["username"],
-        (auth: any) => {
-          setUser({
-            uid: auth.user.uid,
-            username: auth.user.username,
-          });
-          setStatus("ready");
-        },
-        () => {
+      if (window.Pi) {
+        try {
+          window.Pi.init({ version: "2.0" });
+
+          window.Pi.authenticate(
+            ["username"],
+            (auth: any) => {
+              setUser({
+                uid: auth.user.uid,
+                username: auth.user.username,
+              });
+              setStatus("ready");
+            },
+            () => {
+              setStatus("auth");
+            }
+          );
+        } catch {
           setStatus("auth");
         }
-      );
-    } catch {
-      setStatus("not_pi");
-    }
+
+        return;
+      }
+
+      // wait up to ~5 seconds for Pi SDK injection
+      if (attempts < 50) {
+        setTimeout(waitForPi, 100);
+      } else {
+        setStatus("auth");
+      }
+    };
+
+    waitForPi();
   }, []);
 
-  if (status === "checking") {
-    return <Center>Initializing Pi…</Center>;
-  }
-
-  if (status === "not_pi") {
-    return (
-      <Center>
-        <h2>Pi Browser Required</h2>
-        <p>This utility works exclusively inside the Pi Browser.</p>
-      </Center>
-    );
+  if (status === "loading") {
+    return <Center>Initializing Pi Browser…</Center>;
   }
 
   if (status === "auth") {
     return (
       <Center>
-        <h2>Authentication required</h2>
-        <p>Please authorize with your Pi account.</p>
+        <h2>Waiting for Pi authentication</h2>
+        <p>Please make sure you opened this inside the Pi Browser.</p>
       </Center>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return <ProofGenerator user={user} />;
 }
