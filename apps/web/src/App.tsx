@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { initPiSdk, authenticatePi } from "./pi";
+import { buildPiAuthPayload, PiAuthPayload } from "./pi-auth";
 
 type AppState =
   | "detecting"
@@ -29,25 +30,13 @@ type Proof = {
 
 const STORAGE_KEY = "pi_proofs";
 
-const PROOF_TEMPLATES: Record<
-  ProofType,
-  { label: string; description: string }
-> = {
-  event: { label: "Event Attendance", description: "Attended an event" },
-  task: { label: "Task Completed", description: "Completed a task" },
-  community: {
-    label: "Community Contribution",
-    description: "Contributed to a community",
-  },
-  beta: { label: "Beta Tester", description: "Participated as beta tester" },
-  identity: {
-    label: "Identity Verification",
-    description: "Completed identity verification",
-  },
-  supporter: {
-    label: "Early Supporter",
-    description: "Supported a project early",
-  },
+const PROOF_TEMPLATES: Record<ProofType, string> = {
+  event: "Event Attendance",
+  task: "Task Completed",
+  community: "Community Contribution",
+  beta: "Beta Tester",
+  identity: "Identity Verification",
+  supporter: "Early Supporter",
 };
 
 function uuid(): string {
@@ -61,7 +50,7 @@ function uuid(): string {
 export default function App() {
   const [state, setState] = useState<AppState>("detecting");
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [authPayload, setAuthPayload] = useState<PiAuthPayload | null>(null);
 
   const [proofs, setProofs] = useState<Proof[]>([]);
   const [selectedType, setSelectedType] = useState<ProofType | null>(null);
@@ -84,7 +73,7 @@ export default function App() {
             return;
           } catch (err: any) {
             if (!cancelled) {
-              setError(err.message || "Pi init failed");
+              setError(err.message);
               setState("error");
             }
             return;
@@ -93,6 +82,7 @@ export default function App() {
         await new Promise((r) => setTimeout(r, intervalMs));
         elapsed += intervalMs;
       }
+
       if (!cancelled) setState("pi-required");
     }
 
@@ -121,35 +111,53 @@ export default function App() {
   async function handleLogin() {
     setError(null);
     setState("authenticating");
+
     try {
-      const auth = await authenticatePi();
-      setUser(auth.user);
+      const authResult = await authenticatePi();
+      const payload = buildPiAuthPayload(authResult);
+
+      // ⬇️ BACKEND HANDOFF (pronto)
+      console.log("SEND TO BACKEND:", payload);
+
+      setAuthPayload(payload);
       setState("authenticated");
     } catch (err: any) {
-      setError(err?.message || "Authentication failed");
+      setError(err.message || "Authentication failed");
       setState("ready");
     }
   }
 
   function addProof() {
     if (!selectedType) return;
-    const t = PROOF_TEMPLATES[selectedType];
+
     const next: Proof = {
       id: uuid(),
       type: selectedType,
-      title: t.label,
+      title: PROOF_TEMPLATES[selectedType],
       note: note || undefined,
       createdAt: new Date().toISOString(),
     };
+
     saveProofs([next, ...proofs]);
     setSelectedType(null);
     setNote("");
   }
 
   function exportJSON() {
-    const blob = new Blob([JSON.stringify(proofs, null, 2)], {
-      type: "application/json",
-    });
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            user: authPayload?.user,
+            proofs,
+          },
+          null,
+          2
+        ),
+      ],
+      { type: "application/json" }
+    );
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -207,10 +215,8 @@ export default function App() {
         <>
           <section style={styles.profileCard}>
             <div>
-              <strong>@{user?.username}</strong>
-              <p style={{ opacity: 0.8 }}>
-                {proofs.length} proofs recorded
-              </p>
+              <strong>@{authPayload?.user.username}</strong>
+              <p style={{ opacity: 0.8 }}>{proofs.length} proofs</p>
             </div>
             <div style={styles.badge}>PI VERIFIED</div>
           </section>
@@ -229,8 +235,7 @@ export default function App() {
                   }}
                   onClick={() => setSelectedType(k)}
                 >
-                  <strong>{PROOF_TEMPLATES[k].label}</strong>
-                  <small>{PROOF_TEMPLATES[k].description}</small>
+                  {PROOF_TEMPLATES[k]}
                 </button>
               ))}
             </div>
@@ -253,10 +258,6 @@ export default function App() {
           <section style={styles.card}>
             <h2>Your Proofs</h2>
 
-            {proofs.length === 0 && (
-              <p>No proofs yet. Add your first one.</p>
-            )}
-
             {proofs.map((p) => (
               <div key={p.id} style={styles.proof}>
                 <strong>{p.title}</strong>
@@ -267,7 +268,7 @@ export default function App() {
 
             {proofs.length > 0 && (
               <button style={styles.secondaryButton} onClick={exportJSON}>
-                Export Profile Card (JSON)
+                Export Profile Card
               </button>
             )}
           </section>
@@ -331,7 +332,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0.6rem",
     border: "2px solid transparent",
     color: "#fff",
-    textAlign: "left",
+    textAlign: "center",
   },
   textarea: {
     width: "100%",
