@@ -48,7 +48,7 @@ export default function App() {
       let elapsed = 0;
 
       while (elapsed < timeoutMs) {
-        if (typeof window !== "undefined" && (window as any).Pi) {
+        if ((window as any).Pi) {
           try {
             initPiSdk();
             loadActions();
@@ -226,94 +226,3 @@ export default function App() {
             ))}
 
             {actions.length > 0 && (
-              <button style={styles.secondaryButton} onClick={exportJSON}>
-                Export JSON
-              </button>
-            )}
-          </section>
-        </>
-      )}
-    </div>
-  );
-}
-
-function Centered({ children }: { children: any }) {
-  return (
-    <div style={styles.centered}>
-      <div style={styles.card}>{children}</div>
-    </div>
-  );
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  app: {
-    minHeight: "100vh",
-    background: "#0b0f1a",
-    color: "#fff",
-    padding: "1rem",
-    maxWidth: 480,
-    margin: "0 auto",
-  },
-  header: {
-    textAlign: "center",
-    marginBottom: "1.5rem",
-  },
-  card: {
-    background: "#141a2a",
-    borderRadius: 12,
-    padding: "1rem",
-    marginBottom: "1rem",
-  },
-  input: {
-    width: "100%",
-    padding: "0.6rem",
-    marginBottom: "0.6rem",
-    borderRadius: 8,
-    border: "none",
-  },
-  textarea: {
-    width: "100%",
-    padding: "0.6rem",
-    marginBottom: "0.6rem",
-    borderRadius: 8,
-    border: "none",
-    minHeight: 60,
-  },
-  primaryButton: {
-    width: "100%",
-    padding: "0.7rem",
-    borderRadius: 10,
-    border: "none",
-    background: "#facc15",
-    color: "#000",
-    fontWeight: 600,
-  },
-  secondaryButton: {
-    width: "100%",
-    padding: "0.6rem",
-    borderRadius: 10,
-    border: "none",
-    background: "#1f2937",
-    color: "#fff",
-    marginTop: "0.8rem",
-  },
-  action: {
-    background: "#0b1020",
-    borderRadius: 8,
-    padding: "0.6rem",
-    marginBottom: "0.5rem",
-  },
-  centered: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#0b0f1a",
-    color: "#fff",
-    padding: "1rem",
-  },
-  error: {
-    color: "#f87171",
-    marginTop: "0.5rem",
-  },
-};
