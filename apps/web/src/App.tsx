@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { isPiBrowser, authenticatePi } from "./pi";
-import PiOnly from "./components/PiOnly";
+import { authenticatePi } from "./pi";
 import Loading from "./components/Loading";
-import IdentityCard from "./components/IdentityCard";
 
 type PiUser = {
   username: string;
@@ -15,12 +13,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const init = async () => {
-      if (!isPiBrowser()) {
-        setLoading(false);
-        return;
-      }
-
+    const run = async () => {
       try {
         const auth = await authenticatePi();
         setUser({
@@ -28,34 +21,34 @@ export default function App() {
           uid: auth.user.uid,
         });
       } catch (err: any) {
-        setError(err.message || "Authentication failed");
+        setError(err.message || "Pi Browser required");
       } finally {
         setLoading(false);
       }
     };
 
-    init();
+    run();
   }, []);
 
-  if (!isPiBrowser()) return <PiOnly />;
+  if (loading) {
+    return <Loading text="Initializing Pi authentication..." />;
+  }
 
-  if (loading) return <Loading text="Initializing Pi authentication..." />;
-
-  if (error)
+  if (error) {
     return (
       <div style={{ textAlign: "center", marginTop: "40vh" }}>
-        <p>Error: {error}</p>
+        <h2>Pi Browser Required</h2>
+        <p>This utility works exclusively inside the Pi Browser.</p>
       </div>
     );
-
-  if (!user)
-    return <Loading text="Waiting for Pi authentication..." />;
+  }
 
   return (
-    <div style={{ padding: 20, textAlign: "center" }}>
+    <div style={{ textAlign: "center", padding: 20 }}>
       <h1>Pi Identity Hub</h1>
-      <p>Authenticated via Pi Network</p>
-      <IdentityCard username={user.username} uid={user.uid} />
+      <p>Authenticated successfully</p>
+      <p><strong>Username:</strong> {user?.username}</p>
+      <p><strong>UID:</strong> {user?.uid}</p>
     </div>
   );
 }
