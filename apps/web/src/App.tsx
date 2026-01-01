@@ -30,6 +30,7 @@ type Activity = {
 };
 
 const STORAGE_KEY = "pi_activity_journal";
+const LEGAL_SEEN_KEY = "pi_legal_seen_v1";
 
 const ACTIVITY_LABELS: Record<ActivityType, string> = {
   event: "Event attendance",
@@ -60,6 +61,8 @@ export default function App() {
   const [type, setType] = useState<ActivityType>("event");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+
+  const [showLegal, setShowLegal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +124,12 @@ export default function App() {
       const payload = await authenticatePi();
       setAuth(payload);
       setState("authenticated");
+
+      const seen = localStorage.getItem(LEGAL_SEEN_KEY);
+      if (!seen) {
+        setShowLegal(true);
+        localStorage.setItem(LEGAL_SEEN_KEY, "true");
+      }
     } catch (err: any) {
       setError(err.message || "Authentication failed");
       setState("ready");
@@ -140,21 +149,24 @@ export default function App() {
     const now = new Date().toISOString();
 
     if (editingId) {
-      const next = activities.map((a) =>
-        a.id === editingId
-          ? { ...a, type, title, note, updatedAt: now }
-          : a
+      saveActivities(
+        activities.map((a) =>
+          a.id === editingId
+            ? { ...a, type, title, note, updatedAt: now }
+            : a
+        )
       );
-      saveActivities(next);
     } else {
-      const next: Activity = {
-        id: uuid(),
-        type,
-        title,
-        note: note || undefined,
-        createdAt: now,
-      };
-      saveActivities([next, ...activities]);
+      saveActivities([
+        {
+          id: uuid(),
+          type,
+          title,
+          note: note || undefined,
+          createdAt: now,
+        },
+        ...activities,
+      ]);
     }
 
     resetForm();
@@ -217,13 +229,31 @@ export default function App() {
 
       {state === "authenticated" && (
         <>
-          <section style={styles.profileCard}>
-            <div>
-              <strong>@{auth?.user.username}</strong>
-              <p style={{ opacity: 0.8 }}>
-                {activities.length} activities recorded
+          {showLegal && (
+            <section style={styles.card}>
+              <h2>Before you start</h2>
+              <p>
+                Profile Pi Card is a personal utility. Your data stays under
+                your control and is stored locally.
               </p>
-            </div>
+              <p>
+                <strong>Privacy Policy</strong> and{" "}
+                <strong>Terms of Service</strong> are available below.
+              </p>
+              <button
+                style={styles.secondaryButton}
+                onClick={() => setShowLegal(false)}
+              >
+                Continue
+              </button>
+            </section>
+          )}
+
+          <section style={styles.profileCard}>
+            <strong>@{auth?.user.username}</strong>
+            <p style={{ opacity: 0.8 }}>
+              {activities.length} activities recorded
+            </p>
           </section>
 
           <section style={styles.card}>
@@ -279,9 +309,7 @@ export default function App() {
             {activities.map((a) => (
               <div key={a.id} style={styles.entry}>
                 <strong>{a.title}</strong>
-                <p style={{ opacity: 0.8 }}>
-                  {ACTIVITY_LABELS[a.type]}
-                </p>
+                <p style={{ opacity: 0.8 }}>{ACTIVITY_LABELS[a.type]}</p>
                 <small>
                   Recorded on {new Date(a.createdAt).toLocaleString()}
                   {a.updatedAt && " · updated"}
@@ -305,6 +333,11 @@ export default function App() {
               </div>
             ))}
           </section>
+
+          <footer style={styles.footer}>
+            <a href="/PRIVACY_POLICY.md">Privacy Policy</a> ·{" "}
+            <a href="/TERMS_OF_SERVICE.md">Terms of Service</a>
+          </footer>
         </>
       )}
     </div>
@@ -391,6 +424,12 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     color: "#facc15",
     padding: 0,
+  },
+  footer: {
+    textAlign: "center",
+    fontSize: "0.85rem",
+    opacity: 0.8,
+    marginBottom: "1rem",
   },
   centered: {
     minHeight: "100vh",
