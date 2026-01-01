@@ -15,6 +15,15 @@ export function initPiSdk(): void {
     throw new Error("Pi SDK not available");
   }
 
+  if (typeof window.Pi.init !== "function") {
+    throw new Error("Pi.init not available");
+  }
+
+  window.Pi.init({
+    version: "2.0",
+    sandbox: false,
+  });
+
   initialized = true;
 }
 
