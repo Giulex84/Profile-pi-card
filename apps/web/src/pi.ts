@@ -1,37 +1,55 @@
+// apps/web/src/pi.ts
+
 declare global {
   interface Window {
     Pi?: any;
   }
 }
 
-export const waitForPi = (): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    let attempts = 0;
+let initialized = false;
 
-    const interval = setInterval(() => {
-      if (window.Pi) {
-        clearInterval(interval);
-        resolve(window.Pi);
+export function isPiBrowser(): boolean {
+  return typeof window !== "undefined" && typeof window.Pi !== "undefined";
+}
+
+export function initPiSdk(): void {
+  if (!isPiBrowser()) {
+    throw new Error("Pi SDK not found");
+  }
+
+  if (initialized) return;
+
+  try {
+    // Pi SDK auto-initializes in Pi Browser
+    initialized = true;
+  } catch (err) {
+    console.error("Pi SDK init error:", err);
+    throw err;
+  }
+}
+
+export async function authenticatePi(): Promise<any> {
+  if (!isPiBrowser()) {
+    throw new Error("Pi Browser required");
+  }
+
+  if (typeof window.Pi.authenticate !== "function") {
+    throw new Error("Pi.authenticate() not available");
+  }
+
+  try {
+    const authResult = await window.Pi.authenticate(
+      ["username", "payments"],
+      {
+        onIncompletePaymentFound: () => {
+          console.warn("Incomplete payment found");
+        },
       }
+    );
 
-      attempts++;
-      if (attempts > 50) {
-        clearInterval(interval);
-        reject(new Error("Pi SDK not available"));
-      }
-    }, 100);
-  });
-};
-
-export const initPi = async () => {
-  const Pi = await waitForPi();
-  Pi.init({ version: "2.0" });
-  return Pi;
-};
-
-export const authenticatePi = async () => {
-  const Pi = await initPi();
-  const scopes = ["username"];
-  const auth = await Pi.authenticate(scopes, () => {});
-  return auth;
-};
+    return authResult;
+  } catch (err: any) {
+    console.error("Pi authentication failed:", err);
+    throw err;
+  }
+}
