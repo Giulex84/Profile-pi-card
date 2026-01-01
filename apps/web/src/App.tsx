@@ -33,29 +33,20 @@ const PROOF_TEMPLATES: Record<
   ProofType,
   { label: string; description: string }
 > = {
-  event: {
-    label: "Event Attendance",
-    description: "Proof that you attended an event or meetup",
-  },
-  task: {
-    label: "Task Completed",
-    description: "Proof that you completed a task or mission",
-  },
+  event: { label: "Event Attendance", description: "Attended an event" },
+  task: { label: "Task Completed", description: "Completed a task" },
   community: {
     label: "Community Contribution",
-    description: "Proof of contribution to a community or project",
+    description: "Contributed to a community",
   },
-  beta: {
-    label: "Beta Tester",
-    description: "Proof that you participated as a beta tester",
-  },
+  beta: { label: "Beta Tester", description: "Participated as beta tester" },
   identity: {
     label: "Identity Verification",
-    description: "Proof of identity or verification process",
+    description: "Completed identity verification",
   },
   supporter: {
     label: "Early Supporter",
-    description: "Proof that you supported a project early",
+    description: "Supported a project early",
   },
 };
 
@@ -99,11 +90,9 @@ export default function App() {
             return;
           }
         }
-
         await new Promise((r) => setTimeout(r, intervalMs));
         elapsed += intervalMs;
       }
-
       if (!cancelled) setState("pi-required");
     }
 
@@ -132,7 +121,6 @@ export default function App() {
   async function handleLogin() {
     setError(null);
     setState("authenticating");
-
     try {
       const auth = await authenticatePi();
       setUser(auth.user);
@@ -145,17 +133,14 @@ export default function App() {
 
   function addProof() {
     if (!selectedType) return;
-
-    const template = PROOF_TEMPLATES[selectedType];
-
+    const t = PROOF_TEMPLATES[selectedType];
     const next: Proof = {
       id: uuid(),
       type: selectedType,
-      title: template.label,
+      title: t.label,
       note: note || undefined,
       createdAt: new Date().toISOString(),
     };
-
     saveProofs([next, ...proofs]);
     setSelectedType(null);
     setNote("");
@@ -168,7 +153,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "pi-proof-card.json";
+    a.download = "pi-profile-card.json";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -200,8 +185,7 @@ export default function App() {
       <header style={styles.header}>
         <h1>Profile Pi Card</h1>
         <p style={styles.subtitle}>
-          Your Pi activity proof card.  
-          Save verified records and reuse them across the Pi ecosystem.
+          Your Pi identity card with reusable activity proofs.
         </p>
       </header>
 
@@ -221,24 +205,32 @@ export default function App() {
 
       {state === "authenticated" && (
         <>
+          <section style={styles.profileCard}>
+            <div>
+              <strong>@{user?.username}</strong>
+              <p style={{ opacity: 0.8 }}>
+                {proofs.length} proofs recorded
+              </p>
+            </div>
+            <div style={styles.badge}>PI VERIFIED</div>
+          </section>
+
           <section style={styles.card}>
             <h2>Add Proof</h2>
 
             <div style={styles.grid}>
-              {(
-                Object.keys(PROOF_TEMPLATES) as ProofType[]
-              ).map((key) => (
+              {(Object.keys(PROOF_TEMPLATES) as ProofType[]).map((k) => (
                 <button
-                  key={key}
+                  key={k}
                   style={{
                     ...styles.templateButton,
                     borderColor:
-                      selectedType === key ? "#facc15" : "transparent",
+                      selectedType === k ? "#facc15" : "transparent",
                   }}
-                  onClick={() => setSelectedType(key)}
+                  onClick={() => setSelectedType(k)}
                 >
-                  <strong>{PROOF_TEMPLATES[key].label}</strong>
-                  <small>{PROOF_TEMPLATES[key].description}</small>
+                  <strong>{PROOF_TEMPLATES[k].label}</strong>
+                  <small>{PROOF_TEMPLATES[k].description}</small>
                 </button>
               ))}
             </div>
@@ -251,7 +243,6 @@ export default function App() {
                   onChange={(e) => setNote(e.target.value)}
                   style={styles.textarea}
                 />
-
                 <button style={styles.primaryButton} onClick={addProof}>
                   Save Proof
                 </button>
@@ -263,7 +254,7 @@ export default function App() {
             <h2>Your Proofs</h2>
 
             {proofs.length === 0 && (
-              <p>No proofs yet. Start by adding one.</p>
+              <p>No proofs yet. Add your first one.</p>
             )}
 
             {proofs.map((p) => (
@@ -276,7 +267,7 @@ export default function App() {
 
             {proofs.length > 0 && (
               <button style={styles.secondaryButton} onClick={exportJSON}>
-                Export Proof Card (JSON)
+                Export Profile Card (JSON)
               </button>
             )}
           </section>
@@ -303,19 +294,30 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 480,
     margin: "0 auto",
   },
-  header: {
-    textAlign: "center",
-    marginBottom: "1.2rem",
-  },
-  subtitle: {
-    opacity: 0.85,
-    fontSize: "0.95rem",
-  },
+  header: { textAlign: "center", marginBottom: "1rem" },
+  subtitle: { opacity: 0.85, fontSize: "0.95rem" },
   card: {
     background: "#141a2a",
     borderRadius: 14,
     padding: "1rem",
     marginBottom: "1rem",
+  },
+  profileCard: {
+    background: "linear-gradient(135deg, #1f2937, #0b1020)",
+    borderRadius: 16,
+    padding: "1rem",
+    marginBottom: "1rem",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  badge: {
+    background: "#facc15",
+    color: "#000",
+    padding: "0.4rem 0.6rem",
+    borderRadius: 10,
+    fontSize: "0.75rem",
+    fontWeight: 700,
   },
   grid: {
     display: "grid",
