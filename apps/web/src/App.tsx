@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import PublicProfile from "./PublicProfile";
+import ProofGenerator from "./ProofGenerator";
 
 declare global {
   interface Window {
@@ -8,60 +8,84 @@ declare global {
 }
 
 export default function App() {
-  const [piReady, setPiReady] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [status, setStatus] = useState<
+    "checking" | "not_pi" | "auth" | "ready"
+  >("checking");
+  const [user, setUser] = useState<{
+    uid: string;
+    username: string;
+  } | null>(null);
 
   useEffect(() => {
-    // Non blocchiamo MAI la UI
-    if (window.Pi) {
-      try {
-        window.Pi.init({ version: "2.0" });
-        setPiReady(true);
-      } catch (e) {
-        console.warn("Pi SDK present but init failed", e);
-      }
+    if (!window.Pi) {
+      setStatus("not_pi");
+      return;
     }
-    setChecked(true);
+
+    try {
+      window.Pi.init({ version: "2.0" });
+
+      window.Pi.authenticate(
+        ["username"],
+        (auth: any) => {
+          setUser({
+            uid: auth.user.uid,
+            username: auth.user.username,
+          });
+          setStatus("ready");
+        },
+        () => {
+          setStatus("auth");
+        }
+      );
+    } catch {
+      setStatus("not_pi");
+    }
   }, []);
 
+  if (status === "checking") {
+    return <Center>Initializing Pi…</Center>;
+  }
+
+  if (status === "not_pi") {
+    return (
+      <Center>
+        <h2>Pi Browser Required</h2>
+        <p>This utility works exclusively inside the Pi Browser.</p>
+      </Center>
+    );
+  }
+
+  if (status === "auth") {
+    return (
+      <Center>
+        <h2>Authentication required</h2>
+        <p>Please authorize with your Pi account.</p>
+      </Center>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return <ProofGenerator user={user} />;
+}
+
+function Center({ children }: { children: React.ReactNode }) {
   return (
-    <main
+    <div
       style={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        flexDirection: "column",
         textAlign: "center",
-        fontFamily: "system-ui",
         padding: 24,
+        fontFamily: "system-ui",
       }}
     >
-      <h1 style={{ fontSize: 42, marginBottom: 12 }}>
-        Profile Pi Card
-      </h1>
-
-      <p style={{ fontSize: 18, opacity: 0.8 }}>
-        Public profile loaded successfully.
-      </p>
-
-      {/* Contenuto SEMPRE visibile */}
-      <PublicProfile />
-
-      {/* Stato Pi Browser (non bloccante) */}
-      {checked && (
-        <p
-          style={{
-            marginTop: 32,
-            fontSize: 14,
-            opacity: 0.6,
-          }}
-        >
-          {piReady
-            ? "Connected via Pi Browser"
-            : "Pi Browser not detected — public mode"}
-        </p>
-      )}
-    </main>
+      {children}
+    </div>
   );
 }
