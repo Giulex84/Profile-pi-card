@@ -1,95 +1,61 @@
 import { useEffect, useState } from "react";
-import ProofGenerator from "./ProofGenerator";
+import { isPiBrowser, authenticatePi } from "./pi";
+import PiOnly from "./components/PiOnly";
+import Loading from "./components/Loading";
+import IdentityCard from "./components/IdentityCard";
 
-declare global {
-  interface Window {
-    Pi?: any;
-  }
-}
+type PiUser = {
+  username: string;
+  uid: string;
+};
 
 export default function App() {
-  const [status, setStatus] = useState<
-    "loading" | "auth" | "ready"
-  >("loading");
-
-  const [user, setUser] = useState<{
-    uid: string;
-    username: string;
-  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<PiUser | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let attempts = 0;
-
-    const waitForPi = () => {
-      attempts++;
-
-      if (window.Pi) {
-        try {
-          window.Pi.init({ version: "2.0" });
-
-          window.Pi.authenticate(
-            ["username"],
-            (auth: any) => {
-              setUser({
-                uid: auth.user.uid,
-                username: auth.user.username,
-              });
-              setStatus("ready");
-            },
-            () => {
-              setStatus("auth");
-            }
-          );
-        } catch {
-          setStatus("auth");
-        }
-
+    const init = async () => {
+      if (!isPiBrowser()) {
+        setLoading(false);
         return;
       }
 
-      // wait up to ~5 seconds for Pi SDK injection
-      if (attempts < 50) {
-        setTimeout(waitForPi, 100);
-      } else {
-        setStatus("auth");
+      try {
+        const auth = await authenticatePi();
+        setUser({
+          username: auth.user.username,
+          uid: auth.user.uid,
+        });
+      } catch (err: any) {
+        setError(err.message || "Authentication failed");
+      } finally {
+        setLoading(false);
       }
     };
 
-    waitForPi();
+    init();
   }, []);
 
-  if (status === "loading") {
-    return <Center>Initializing Pi Browser…</Center>;
-  }
+  if (!isPiBrowser()) return <PiOnly />;
 
-  if (status === "auth") {
+  if (loading) return <Loading text="Initializing Pi authentication..." />;
+
+  if (error)
     return (
-      <Center>
-        <h2>Waiting for Pi authentication</h2>
-        <p>Please make sure you opened this inside the Pi Browser.</p>
-      </Center>
+      <div style={{ textAlign: "center", marginTop: "40vh" }}>
+        <p>Error: {error}</p>
+      </div>
     );
-  }
 
-  if (!user) return null;
+  if (!user)
+    return <Loading text="Waiting for Pi authentication..." />;
 
-  return <ProofGenerator user={user} />;
-}
-
-function Center({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        textAlign: "center",
-        padding: 24,
-        fontFamily: "system-ui",
-      }}
-    >
-      {children}
+    <div style={{ padding: 20, textAlign: "center" }}>
+      <h1>Pi Identity Hub</h1>
+      <p>Authenticated via Pi Network</p>
+      <IdentityCard username={user.username} uid={user.uid} />
     </div>
   );
 }
