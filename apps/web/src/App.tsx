@@ -1,8 +1,7 @@
 // apps/web/src/App.tsx
 
 import { useEffect, useState } from "react";
-import { initPiSdk, authenticatePi } from "./pi";
-import { buildPiAuthPayload, PiAuthPayload } from "./pi-auth";
+import { initPiSdk, authenticatePi, PiAuthPayload } from "./pi";
 
 type AppState =
   | "detecting"
@@ -50,7 +49,7 @@ function uuid(): string {
 export default function App() {
   const [state, setState] = useState<AppState>("detecting");
   const [error, setError] = useState<string | null>(null);
-  const [authPayload, setAuthPayload] = useState<PiAuthPayload | null>(null);
+  const [auth, setAuth] = useState<PiAuthPayload | null>(null);
 
   const [proofs, setProofs] = useState<Proof[]>([]);
   const [selectedType, setSelectedType] = useState<ProofType | null>(null);
@@ -73,7 +72,7 @@ export default function App() {
             return;
           } catch (err: any) {
             if (!cancelled) {
-              setError(err.message);
+              setError(err.message || "Pi init failed");
               setState("error");
             }
             return;
@@ -113,13 +112,12 @@ export default function App() {
     setState("authenticating");
 
     try {
-      const authResult = await authenticatePi();
-      const payload = buildPiAuthPayload(authResult);
+      const payload = await authenticatePi();
 
-      // ⬇️ BACKEND HANDOFF (pronto)
-      console.log("SEND TO BACKEND:", payload);
+      // 🔒 backend-ready: invia payload.accessToken + proofs
+      console.log("Pi auth payload:", payload);
 
-      setAuthPayload(payload);
+      setAuth(payload);
       setState("authenticated");
     } catch (err: any) {
       setError(err.message || "Authentication failed");
@@ -148,7 +146,7 @@ export default function App() {
       [
         JSON.stringify(
           {
-            user: authPayload?.user,
+            user: auth?.user,
             proofs,
           },
           null,
@@ -215,7 +213,7 @@ export default function App() {
         <>
           <section style={styles.profileCard}>
             <div>
-              <strong>@{authPayload?.user.username}</strong>
+              <strong>@{auth?.user.username}</strong>
               <p style={{ opacity: 0.8 }}>{proofs.length} proofs</p>
             </div>
             <div style={styles.badge}>PI VERIFIED</div>
