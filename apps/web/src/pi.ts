@@ -4,18 +4,34 @@ declare global {
   }
 }
 
-export const isPiBrowser = () => {
-  return typeof window !== "undefined" && typeof window.Pi !== "undefined";
+export const waitForPi = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+
+    const interval = setInterval(() => {
+      if (window.Pi) {
+        clearInterval(interval);
+        resolve(window.Pi);
+      }
+
+      attempts++;
+      if (attempts > 50) {
+        clearInterval(interval);
+        reject(new Error("Pi SDK not available"));
+      }
+    }, 100);
+  });
+};
+
+export const initPi = async () => {
+  const Pi = await waitForPi();
+  Pi.init({ version: "2.0" });
+  return Pi;
 };
 
 export const authenticatePi = async () => {
-  if (!window.Pi) throw new Error("Pi SDK not available");
-
+  const Pi = await initPi();
   const scopes = ["username"];
-  const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
+  const auth = await Pi.authenticate(scopes, () => {});
   return auth;
-};
-
-const onIncompletePaymentFound = (payment: any) => {
-  console.warn("Incomplete payment found", payment);
 };
