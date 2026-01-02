@@ -1,4 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { initPiSdk, authenticatePi, PiAuthPayload } from "./pi";
+
+type AppState =
+  | "detecting"
+  | "pi-required"
+  | "ready"
+  | "authenticating"
+  | "authenticated"
+  | "error";
+
+type ActivityType =
+  | "Event participation"
+  | "Community contribution"
+  | "Learning"
+  | "Testing / Feedback"
+  | "Personal milestone"
+  | "Other";
 
 type Activity = {
   id: string;
@@ -6,9 +23,13 @@ type Activity = {
   category: string;
   note?: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
-const PRESET_CATEGORIES = [
+const STORAGE_KEY = "ppc_activities_v2";
+const SETTINGS_KEY = "ppc_settings_v1";
+
+const PRESET_CATEGORIES: ActivityType[] = [
   "Event participation",
   "Community contribution",
   "Learning",
@@ -17,205 +38,297 @@ const PRESET_CATEGORIES = [
   "Other",
 ];
 
+/* ===== PROMPTS OTTIMIZZATI ===== */
+const PROMPTS = [
+  "What did you explore today in the Pi ecosystem?",
+  "Did you interact with a Pi app or feature recently?",
+  "What small progress did you make on your Pi journey?",
+  "What did you learn or understand better today?",
+  "Did you test, try, or review something related to Pi?",
+  "What contribution or participation would you like to remember?",
+  "What surprised you or caught your attention recently?",
+  "What would you like your future self to remember about today?",
+  "Did you take a step — even a small one — worth noting?",
+  "What did you do today that connects you to Pi?",
+];
+
+const PRIVACY_TEXT = `Profile Pi Card respects your privacy.
+
+• Pi Authentication is used only to identify you.
+• Your journal entries are stored locally on your device.
+• No data is shared automatically.
+• No tracking or third-party analytics.
+• You can export your data manually at any time.
+
+Your data stays under your control.`;
+
+const TERMS_TEXT = `Profile Pi Card is a personal journaling utility.
+
+• No payments, rewards, or guarantees.
+• Entries do not have financial or reputational value.
+• The service is provided “as is”.
+• You are responsible for the content you record.
+
+By using this app, you agree to these terms.`;
+
+/* ===== UTILS ===== */
+function uid(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function toDayKey(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString();
+}
+
+function safeParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+/* ===== APP ===== */
 export default function App() {
-  const [user, setUser] = useState<any>(null);
+  const [state, setState] = useState<AppState>("detecting");
+  const [error, setError] = useState<string | null>(null);
+  const [auth, setAuth] = useState<PiAuthPayload | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState<ActivityType | "">("");
   const [customCategory, setCustomCategory] = useState("");
   const [note, setNote] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [hideOnboarding, setHideOnboarding] = useState(false);
+
+  const didInit = useRef(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("ppc_activities");
-    if (stored) setActivities(JSON.parse(stored));
+    let cancelled = false;
+
+    async function detectPi() {
+      setState("detecting");
+      let elapsed = 0;
+
+      while (elapsed < 3500) {
+        if ((window as any).Pi) {
+          try {
+            if (!didInit.current) {
+              initPiSdk();
+              didInit.current = true;
+            }
+
+            setActivities(
+              safeParse<Activity[]>(localStorage.getItem(STORAGE_KEY), [])
+            );
+            setHideOnboarding(
+              safeParse<{ hideOnboarding?: boolean }>(
+                localStorage.getItem(SETTINGS_KEY),
+                {}
+              ).hideOnboarding ?? false
+            );
+
+            if (!cancelled) setState("ready");
+            return;
+          } catch (e: any) {
+            setError(e?.message || "Pi SDK init failed");
+            setState("error");
+            return;
+          }
+        }
+        await new Promise((r) => setTimeout(r, 100));
+        elapsed += 100;
+      }
+      if (!cancelled) setState("pi-required");
+    }
+
+    detectPi();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("ppc_activities", JSON.stringify(activities));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
   }, [activities]);
 
-  const stats = useMemo(() => {
-    if (activities.length === 0) return null;
-    const first = activities[activities.length - 1];
-    const last = activities[0];
-    return {
-      first: new Date(first.createdAt).toLocaleDateString(),
-      last: new Date(last.createdAt).toLocaleDateString(),
-    };
-  }, [activities]);
+  useEffect(() => {
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({ hideOnboarding })
+    );
+  }, [hideOnboarding]);
+
+  const todaysPrompt = useMemo(() => {
+    const key = toDayKey();
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    return PROMPTS[hash % PROMPTS.length];
+  }, []);
 
   const connectWithPi = async () => {
+    setState("authenticating");
     try {
-      if (!window.Pi) throw new Error("Pi SDK not available");
-      window.Pi.init({ version: "2.0", sandbox: false });
-      const auth = await window.Pi.authenticate(["username"], {
-        onIncompletePaymentFound: () => {},
-      });
-      setUser(auth.user);
-    } catch (e) {
-      alert((e as Error).message);
+      const payload = await authenticatePi();
+      setAuth(payload);
+      setState("authenticated");
+      if (!hideOnboarding) setShowOnboarding(true);
+    } catch (e: any) {
+      setError(e?.message || "Authentication failed");
+      setState("ready");
     }
   };
 
-  const addActivity = () => {
+  const saveEntry = () => {
     const finalCategory =
       category === "Other" ? customCategory.trim() : category;
-    if (!title || !finalCategory) return;
+    if (!title.trim() || !finalCategory) return;
 
-    setActivities([
-      {
-        id: crypto.randomUUID(),
-        title,
-        category: finalCategory,
-        note,
-        createdAt: new Date().toISOString(),
-      },
-      ...activities,
-    ]);
+    const now = new Date().toISOString();
+
+    if (editingId) {
+      setActivities((prev) =>
+        prev.map((a) =>
+          a.id === editingId
+            ? { ...a, title, category: finalCategory, note, updatedAt: now }
+            : a
+        )
+      );
+    } else {
+      setActivities((prev) => [
+        { id: uid(), title, category: finalCategory, note, createdAt: now },
+        ...prev,
+      ]);
+    }
 
     setTitle("");
     setCategory("");
     setCustomCategory("");
     setNote("");
+    setEditingId(null);
   };
 
-  return (
-    <div style={styles.page}>
-      <header style={styles.header}>
-        <h1 style={styles.h1}>Profile Pi Card</h1>
-        <p style={styles.subtitle}>
-          A quiet place to keep track of your Pi journey.
-        </p>
-      </header>
+  if (state === "detecting")
+    return <Screen title="Detecting Pi Browser…" subtitle="Loading environment" />;
 
-      {!user && (
-        <section style={styles.centerCard}>
-          <p style={styles.helper}>
-            This journal grows with you over time.
+  if (state === "pi-required")
+    return <Screen title="Pi Browser Required" subtitle="Open inside Pi Browser" />;
+
+  if (state === "error")
+    return <Screen title="Error" subtitle={error || "Unexpected error"} />;
+
+  return (
+    <div style={ui.shell}>
+      {!auth && (
+        <div style={ui.card}>
+          <h1>Profile Pi Card</h1>
+          <p style={ui.muted}>
+            Your personal Pi activity journal — private and under your control.
           </p>
-          <button style={styles.primary} onClick={connectWithPi}>
-            Connect with Pi
+          <button style={ui.primaryBtn} onClick={connectWithPi}>
+            {state === "authenticating" ? "Connecting…" : "Connect with Pi"}
           </button>
-        </section>
+        </div>
       )}
 
-      {user && (
+      {auth && (
         <>
-          <section style={styles.identityCard}>
-            <strong>@{user.username}</strong>
-            <p style={styles.muted}>
-              Your Pi identity is connected. Everything here stays personal.
-            </p>
+          <div style={ui.card}>
+            <strong>@{auth.user.username}</strong>
+            <p style={ui.muted}>Today’s prompt</p>
+            <p><em>{todaysPrompt}</em></p>
+          </div>
 
-            {stats && (
-              <p style={styles.time}>
-                First entry: {stats.first} · Last update: {stats.last}
-              </p>
-            )}
-          </section>
-
-          <section style={styles.inlineActions}>
-            <button style={styles.link} onClick={() => setShowPrivacy(true)}>
-              Privacy Policy
-            </button>
-            <button style={styles.link} onClick={() => setShowTerms(true)}>
-              Terms of Service
-            </button>
-          </section>
-
-          <section style={styles.card}>
-            <h2 style={styles.h2}>Add an activity</h2>
-            <p style={styles.helper}>
-              What did you do recently? This is just for you.
-            </p>
-
+          <div style={ui.card}>
             <input
-              style={styles.input}
+              style={ui.input}
               placeholder="What did you do?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
 
             <select
-              style={styles.input}
+              style={ui.input}
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => setCategory(e.target.value as any)}
             >
-              <option value="">Choose a category</option>
+              <option value="">Choose category</option>
               {PRESET_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
 
             {category === "Other" && (
               <input
-                style={styles.input}
-                placeholder="Describe your category"
+                style={ui.input}
+                placeholder="Custom category"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
               />
             )}
 
             <textarea
-              style={styles.textarea}
-              placeholder="Optional notes (why it mattered, what you learned)"
+              style={ui.textarea}
+              placeholder="Optional notes"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
 
-            <button style={styles.primary} onClick={addActivity}>
-              Save activity
+            <button style={ui.primaryBtn} onClick={saveEntry}>
+              Save to journal
             </button>
-          </section>
+          </div>
 
-          <section style={styles.card}>
-            <h2 style={styles.h2}>Your activity journal</h2>
-
-            {activities.length === 0 && (
-              <div style={styles.empty}>
-                <p style={styles.emptyTitle}>Your journal is empty</p>
-                <p style={styles.muted}>
-                  Start with something small. You can add more anytime.
-                </p>
-              </div>
-            )}
-
-            {activities.map((a) => (
-              <div key={a.id} style={styles.item}>
-                <strong>{a.title}</strong>
-                <div style={styles.badge}>{a.category}</div>
-                {a.note && <p style={styles.note}>{a.note}</p>}
-                <small style={styles.muted}>
-                  {new Date(a.createdAt).toLocaleString()}
-                </small>
-              </div>
-            ))}
-          </section>
+          <div style={ui.footer}>
+            <button style={ui.linkBtn} onClick={() => setShowPrivacy(true)}>Privacy</button>
+            <span>·</span>
+            <button style={ui.linkBtn} onClick={() => setShowTerms(true)}>Terms</button>
+          </div>
         </>
       )}
 
       {showPrivacy && (
         <Modal title="Privacy Policy" onClose={() => setShowPrivacy(false)}>
-          <p>
-            Profile Pi Card stores your activities locally on your device.<br />
-            No tracking, no sharing, no third-party analytics.
-          </p>
+          <pre style={ui.legal}>{PRIVACY_TEXT}</pre>
         </Modal>
       )}
 
       {showTerms && (
         <Modal title="Terms of Service" onClose={() => setShowTerms(false)}>
-          <p>
-            Profile Pi Card is a personal journaling utility.<br />
-            It provides no payments, rewards, or guarantees.
-          </p>
+          <pre style={ui.legal}>{TERMS_TEXT}</pre>
         </Modal>
       )}
+    </div>
+  );
+}
+
+/* ===== SIMPLE UI ===== */
+
+function Screen({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div style={ui.shell}>
+      <div style={ui.card}>
+        <h2>{title}</h2>
+        <p style={ui.muted}>{subtitle}</p>
+      </div>
     </div>
   );
 }
@@ -226,141 +339,30 @@ function Modal({
   onClose,
 }: {
   title: string;
-  children: any;
+  children: React.ReactNode;
   onClose: () => void;
 }) {
   return (
-    <div style={styles.overlay}>
-      <div style={styles.modal}>
-        <h2 style={styles.h2}>{title}</h2>
-        <div style={{ overflowY: "auto", maxHeight: "60vh" }}>{children}</div>
-        <button style={styles.secondary} onClick={onClose}>
-          Close
-        </button>
+    <div style={ui.overlay}>
+      <div style={ui.modal}>
+        <h3>{title}</h3>
+        <div>{children}</div>
+        <button style={ui.primaryBtn} onClick={onClose}>Close</button>
       </div>
     </div>
   );
 }
 
-/* ---------- STYLES ---------- */
-
-const styles: any = {
-  page: {
-    padding: 20,
-    background: "#0b0f1a",
-    color: "#ffffff",
-    minHeight: "100vh",
-    maxWidth: 480,
-    margin: "0 auto",
-  },
-  header: {
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  h1: { fontSize: 28, marginBottom: 8 },
-  h2: { fontSize: 18, marginBottom: 6 },
-  subtitle: { opacity: 0.85, fontSize: 14 },
-  helper: { fontSize: 13, opacity: 0.7 },
-  muted: { opacity: 0.65, fontSize: 13 },
-  time: { marginTop: 6, fontSize: 12, opacity: 0.6 },
-  centerCard: {
-    background: "#141a2b",
-    padding: 24,
-    borderRadius: 14,
-    textAlign: "center",
-  },
-  identityCard: {
-    background: "#0f1528",
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 12,
-  },
-  inlineActions: {
-    display: "flex",
-    gap: 16,
-    marginBottom: 12,
-  },
-  link: {
-    background: "none",
-    border: "none",
-    color: "#f5c518",
-    padding: 0,
-    fontSize: 13,
-  },
-  card: {
-    background: "#141a2b",
-    padding: 16,
-    borderRadius: 14,
-    marginTop: 16,
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  input: {
-    padding: 10,
-    borderRadius: 10,
-    border: "none",
-    fontSize: 14,
-  },
-  textarea: {
-    padding: 10,
-    borderRadius: 10,
-    border: "none",
-    fontSize: 14,
-    minHeight: 70,
-  },
-  primary: {
-    background: "#f5c518",
-    border: "none",
-    borderRadius: 12,
-    padding: "10px 16px",
-    fontWeight: 600,
-    marginTop: 8,
-  },
-  secondary: {
-    background: "#1f2937",
-    border: "none",
-    borderRadius: 12,
-    padding: "8px 14px",
-    color: "#fff",
-    marginTop: 12,
-  },
-  item: {
-    background: "#0f1528",
-    padding: 12,
-    borderRadius: 12,
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-    marginBottom: 8,
-  },
-  badge: {
-    display: "inline-block",
-    marginTop: 4,
-    padding: "2px 8px",
-    borderRadius: 999,
-    background: "#1f2937",
-    fontSize: 12,
-    opacity: 0.85,
-    width: "fit-content",
-  },
-  note: { fontSize: 14 },
-  empty: { textAlign: "center", padding: 16 },
-  emptyTitle: { fontSize: 16, marginBottom: 6 },
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.6)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 999,
-  },
-  modal: {
-    background: "#111827",
-    padding: 20,
-    borderRadius: 14,
-    width: "90%",
-    maxWidth: 420,
-  },
+const ui: any = {
+  shell: { padding: 20, minHeight: "100vh", background: "#0b0f1a", color: "#fff" },
+  card: { background: "#141a2b", padding: 16, borderRadius: 14, marginBottom: 16 },
+  muted: { opacity: 0.7, fontSize: 14 },
+  input: { width: "100%", padding: 10, borderRadius: 10, marginBottom: 8 },
+  textarea: { width: "100%", padding: 10, borderRadius: 10, minHeight: 60 },
+  primaryBtn: { background: "#f5c518", border: "none", padding: "10px 14px", borderRadius: 12, fontWeight: 700 },
+  linkBtn: { background: "none", border: "none", color: "#f5c518", fontWeight: 700 },
+  footer: { textAlign: "center", marginTop: 12 },
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "center", alignItems: "center" },
+  modal: { background: "#111", padding: 20, borderRadius: 14, maxWidth: 400, width: "90%" },
+  legal: { whiteSpace: "pre-wrap", fontSize: 13 },
 };
