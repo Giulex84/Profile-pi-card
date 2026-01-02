@@ -41,11 +41,9 @@ export default function App() {
     try {
       if (!window.Pi) throw new Error("Pi SDK not available");
       window.Pi.init({ version: "2.0", sandbox: false });
-
       const auth = await window.Pi.authenticate(["username"], {
         onIncompletePaymentFound: () => {},
       });
-
       setUser(auth.user);
     } catch (e) {
       alert((e as Error).message);
@@ -55,7 +53,6 @@ export default function App() {
   const addActivity = () => {
     const finalCategory =
       category === "Other" ? customCategory.trim() : category;
-
     if (!title || !finalCategory) return;
 
     setActivities([
@@ -77,44 +74,54 @@ export default function App() {
 
   return (
     <div style={styles.page}>
-      <h1>Profile Pi Card</h1>
-      <p style={styles.subtitle}>
-        Your personal Pi activity journal — private, simple, under your control.
-      </p>
+      <header style={styles.header}>
+        <h1 style={styles.h1}>Profile Pi Card</h1>
+        <p style={styles.subtitle}>
+          Your personal Pi activity journal — private, simple, under your control.
+        </p>
+      </header>
 
       {!user && (
-        <button style={styles.primary} onClick={connectWithPi}>
-          Connect with Pi
-        </button>
+        <section style={styles.centerCard}>
+          <button style={styles.primary} onClick={connectWithPi}>
+            Connect with Pi
+          </button>
+        </section>
       )}
 
       {user && (
         <>
-          <div style={styles.card}>
+          <section style={styles.identityCard}>
             <strong>@{user.username}</strong>
-            <p style={{ opacity: 0.8 }}>
-              Your Pi identity is connected. Activities remain private to you.
+            <p style={styles.muted}>
+              Pi identity connected. Your entries stay private.
             </p>
-          </div>
+          </section>
 
-          <div style={styles.actions}>
-            <button onClick={() => setShowPrivacy(true)}>Privacy Policy</button>
-            <button onClick={() => setShowTerms(true)}>Terms of Service</button>
-          </div>
+          <section style={styles.inlineActions}>
+            <button style={styles.link} onClick={() => setShowPrivacy(true)}>
+              Privacy Policy
+            </button>
+            <button style={styles.link} onClick={() => setShowTerms(true)}>
+              Terms of Service
+            </button>
+          </section>
 
-          <div style={styles.card}>
-            <h2>Add an activity</h2>
+          <section style={styles.card}>
+            <h2 style={styles.h2}>Add an activity</h2>
             <p style={styles.helper}>
               Record something you did related to Pi — for your own reference.
             </p>
 
             <input
+              style={styles.input}
               placeholder="What did you do?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
 
             <select
+              style={styles.input}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
@@ -128,6 +135,7 @@ export default function App() {
 
             {category === "Other" && (
               <input
+                style={styles.input}
                 placeholder="Describe your category"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
@@ -135,7 +143,8 @@ export default function App() {
             )}
 
             <textarea
-              placeholder="Optional notes (why it mattered, what you learned, etc.)"
+              style={styles.textarea}
+              placeholder="Optional notes (why it mattered, what you learned)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
@@ -143,19 +152,18 @@ export default function App() {
             <button style={styles.primary} onClick={addActivity}>
               Save activity
             </button>
-          </div>
+          </section>
 
-          <div style={styles.card}>
-            <h2>Your activity journal</h2>
+          <section style={styles.card}>
+            <h2 style={styles.h2}>Your activity journal</h2>
 
             {activities.length === 0 && (
               <div style={styles.empty}>
-                <p>
-                  Nothing here yet.
-                  <br />
+                <p style={styles.emptyTitle}>Nothing here yet</p>
+                <p style={styles.muted}>
                   This journal is private and always under your control.
                 </p>
-                <p style={{ opacity: 0.7 }}>
+                <p style={styles.muted}>
                   Start by adding your first activity whenever you’re ready.
                 </p>
               </div>
@@ -163,13 +171,17 @@ export default function App() {
 
             {activities.map((a) => (
               <div key={a.id} style={styles.item}>
-                <strong>{a.title}</strong>
-                <div style={{ opacity: 0.8 }}>{a.category}</div>
-                {a.note && <p>{a.note}</p>}
-                <small>{new Date(a.createdAt).toLocaleString()}</small>
+                <div>
+                  <strong>{a.title}</strong>
+                  <div style={styles.badge}>{a.category}</div>
+                </div>
+                {a.note && <p style={styles.note}>{a.note}</p>}
+                <small style={styles.muted}>
+                  {new Date(a.createdAt).toLocaleString()}
+                </small>
               </div>
             ))}
-          </div>
+          </section>
         </>
       )}
 
@@ -187,8 +199,8 @@ export default function App() {
         <Modal title="Terms of Service" onClose={() => setShowTerms(false)}>
           <p>
             Profile Pi Card is a personal journaling utility.<br />
-            It does not process payments, rewards, or guarantees.<br />
-            Use the app at your own discretion.
+            No payments, no rewards, no guarantees.<br />
+            Use at your own discretion.
           </p>
         </Modal>
       )}
@@ -208,72 +220,158 @@ function Modal({
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
-        <h2>{title}</h2>
+        <h2 style={styles.h2}>{title}</h2>
         <div style={{ overflowY: "auto", maxHeight: "60vh" }}>{children}</div>
-        <button onClick={onClose}>Close</button>
+        <button style={styles.secondary} onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>
   );
 }
 
+/* ---------------- STYLES ---------------- */
+
 const styles: any = {
   page: {
     padding: 20,
-    color: "#fff",
     background: "#0b0f1a",
+    color: "#ffffff",
     minHeight: "100vh",
+    maxWidth: 480,
+    margin: "0 auto",
+  },
+  header: {
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  h1: {
+    marginBottom: 8,
+    fontSize: 28,
+  },
+  h2: {
+    marginBottom: 6,
+    fontSize: 18,
   },
   subtitle: {
     opacity: 0.8,
-    marginBottom: 20,
+    fontSize: 14,
   },
   helper: {
-    fontSize: 14,
+    fontSize: 13,
     opacity: 0.7,
+    marginBottom: 8,
   },
-  primary: {
-    background: "#f5c518",
-    padding: "10px 16px",
+  muted: {
+    opacity: 0.7,
+    fontSize: 13,
+  },
+  centerCard: {
+    background: "#141a2b",
+    padding: 24,
+    borderRadius: 14,
+    textAlign: "center",
+  },
+  identityCard: {
+    background: "#0f1528",
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+  inlineActions: {
+    display: "flex",
+    gap: 16,
+    marginBottom: 12,
+  },
+  link: {
+    background: "none",
     border: "none",
-    fontWeight: "bold",
-    marginTop: 8,
+    color: "#f5c518",
+    padding: 0,
+    fontSize: 13,
   },
   card: {
     background: "#141a2b",
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 14,
     marginTop: 16,
     display: "flex",
     flexDirection: "column",
     gap: 8,
   },
-  actions: {
-    display: "flex",
-    gap: 10,
-    marginTop: 10,
+  input: {
+    padding: 10,
+    borderRadius: 10,
+    border: "none",
+    fontSize: 14,
+  },
+  textarea: {
+    padding: 10,
+    borderRadius: 10,
+    border: "none",
+    fontSize: 14,
+    minHeight: 70,
+  },
+  primary: {
+    background: "#f5c518",
+    border: "none",
+    borderRadius: 12,
+    padding: "10px 16px",
+    fontWeight: 600,
+    marginTop: 8,
+  },
+  secondary: {
+    background: "#1f2937",
+    border: "none",
+    borderRadius: 12,
+    padding: "8px 14px",
+    color: "#fff",
+    marginTop: 12,
   },
   item: {
-    borderBottom: "1px solid #222",
-    padding: "8px 0",
+    background: "#0f1528",
+    padding: 12,
+    borderRadius: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    marginBottom: 8,
+  },
+  badge: {
+    display: "inline-block",
+    marginTop: 4,
+    padding: "2px 8px",
+    borderRadius: 999,
+    background: "#1f2937",
+    fontSize: 12,
+    opacity: 0.85,
+    width: "fit-content",
+  },
+  note: {
+    fontSize: 14,
   },
   empty: {
-    padding: 12,
     textAlign: "center",
+    padding: 16,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    marginBottom: 6,
   },
   overlay: {
     position: "fixed",
     inset: 0,
     background: "rgba(0,0,0,0.6)",
     display: "flex",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     zIndex: 999,
   },
   modal: {
-    background: "#111",
+    background: "#111827",
     padding: 20,
-    borderRadius: 8,
+    borderRadius: 14,
     width: "90%",
-    maxWidth: 500,
+    maxWidth: 420,
   },
 };
