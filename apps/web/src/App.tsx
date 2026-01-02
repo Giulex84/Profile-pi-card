@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Activity = {
   id: string;
@@ -35,6 +35,16 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem("ppc_activities", JSON.stringify(activities));
+  }, [activities]);
+
+  const stats = useMemo(() => {
+    if (activities.length === 0) return null;
+    const first = activities[activities.length - 1];
+    const last = activities[0];
+    return {
+      first: new Date(first.createdAt).toLocaleDateString(),
+      last: new Date(last.createdAt).toLocaleDateString(),
+    };
   }, [activities]);
 
   const connectWithPi = async () => {
@@ -77,12 +87,15 @@ export default function App() {
       <header style={styles.header}>
         <h1 style={styles.h1}>Profile Pi Card</h1>
         <p style={styles.subtitle}>
-          Your personal Pi activity journal — private, simple, under your control.
+          A quiet place to keep track of your Pi journey.
         </p>
       </header>
 
       {!user && (
         <section style={styles.centerCard}>
+          <p style={styles.helper}>
+            This journal grows with you over time.
+          </p>
           <button style={styles.primary} onClick={connectWithPi}>
             Connect with Pi
           </button>
@@ -94,8 +107,14 @@ export default function App() {
           <section style={styles.identityCard}>
             <strong>@{user.username}</strong>
             <p style={styles.muted}>
-              Pi identity connected. Your entries stay private.
+              Your Pi identity is connected. Everything here stays personal.
             </p>
+
+            {stats && (
+              <p style={styles.time}>
+                First entry: {stats.first} · Last update: {stats.last}
+              </p>
+            )}
           </section>
 
           <section style={styles.inlineActions}>
@@ -110,7 +129,7 @@ export default function App() {
           <section style={styles.card}>
             <h2 style={styles.h2}>Add an activity</h2>
             <p style={styles.helper}>
-              Record something you did related to Pi — for your own reference.
+              What did you do recently? This is just for you.
             </p>
 
             <input
@@ -159,22 +178,17 @@ export default function App() {
 
             {activities.length === 0 && (
               <div style={styles.empty}>
-                <p style={styles.emptyTitle}>Nothing here yet</p>
+                <p style={styles.emptyTitle}>Your journal is empty</p>
                 <p style={styles.muted}>
-                  This journal is private and always under your control.
-                </p>
-                <p style={styles.muted}>
-                  Start by adding your first activity whenever you’re ready.
+                  Start with something small. You can add more anytime.
                 </p>
               </div>
             )}
 
             {activities.map((a) => (
               <div key={a.id} style={styles.item}>
-                <div>
-                  <strong>{a.title}</strong>
-                  <div style={styles.badge}>{a.category}</div>
-                </div>
+                <strong>{a.title}</strong>
+                <div style={styles.badge}>{a.category}</div>
                 {a.note && <p style={styles.note}>{a.note}</p>}
                 <small style={styles.muted}>
                   {new Date(a.createdAt).toLocaleString()}
@@ -188,8 +202,7 @@ export default function App() {
       {showPrivacy && (
         <Modal title="Privacy Policy" onClose={() => setShowPrivacy(false)}>
           <p>
-            Profile Pi Card respects your privacy.<br />
-            Activities are stored locally on your device.<br />
+            Profile Pi Card stores your activities locally on your device.<br />
             No tracking, no sharing, no third-party analytics.
           </p>
         </Modal>
@@ -199,8 +212,7 @@ export default function App() {
         <Modal title="Terms of Service" onClose={() => setShowTerms(false)}>
           <p>
             Profile Pi Card is a personal journaling utility.<br />
-            No payments, no rewards, no guarantees.<br />
-            Use at your own discretion.
+            It provides no payments, rewards, or guarantees.
           </p>
         </Modal>
       )}
@@ -230,7 +242,7 @@ function Modal({
   );
 }
 
-/* ---------------- STYLES ---------------- */
+/* ---------- STYLES ---------- */
 
 const styles: any = {
   page: {
@@ -245,27 +257,12 @@ const styles: any = {
     textAlign: "center",
     marginBottom: 24,
   },
-  h1: {
-    marginBottom: 8,
-    fontSize: 28,
-  },
-  h2: {
-    marginBottom: 6,
-    fontSize: 18,
-  },
-  subtitle: {
-    opacity: 0.8,
-    fontSize: 14,
-  },
-  helper: {
-    fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 8,
-  },
-  muted: {
-    opacity: 0.7,
-    fontSize: 13,
-  },
+  h1: { fontSize: 28, marginBottom: 8 },
+  h2: { fontSize: 18, marginBottom: 6 },
+  subtitle: { opacity: 0.85, fontSize: 14 },
+  helper: { fontSize: 13, opacity: 0.7 },
+  muted: { opacity: 0.65, fontSize: 13 },
+  time: { marginTop: 6, fontSize: 12, opacity: 0.6 },
   centerCard: {
     background: "#141a2b",
     padding: 24,
@@ -347,17 +344,9 @@ const styles: any = {
     opacity: 0.85,
     width: "fit-content",
   },
-  note: {
-    fontSize: 14,
-  },
-  empty: {
-    textAlign: "center",
-    padding: 16,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    marginBottom: 6,
-  },
+  note: { fontSize: 14 },
+  empty: { textAlign: "center", padding: 16 },
+  emptyTitle: { fontSize: 16, marginBottom: 6 },
   overlay: {
     position: "fixed",
     inset: 0,
