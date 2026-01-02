@@ -1,77 +1,68 @@
 # Profile Pi Card
 
-**Profile Pi Card** is a Pi Network dApp that allows users to create and manage a personal collection of **Pi-verified activity proofs**.
+Profile Pi Card is a **private, identity-gated journaling utility** built for the Pi Network.
 
-The app is designed as a **personal utility**, helping users keep track of their verified participation, contributions, and activities within the Pi ecosystem.
+It allows Pi users to record and reflect on their personal activities within the Pi ecosystem in a simple, private, and local-first way.
 
----
-
-## 🔑 Key Features
-
-- Pi Network Authentication (Pi Browser only)
-- Personal profile card linked to Pi username
-- Predefined proof templates (e.g. Event Attendance, Beta Tester)
-- Local-first data storage (no automatic data sharing)
-- Exportable proof card (JSON)
-- Simple, fast, mobile-first interface
+This app is designed to be:
+- simple
+- intentional
+- privacy-first
+- fully compliant with Pi Network guidelines
 
 ---
 
-## 🧠 How It Works
+## What does this app do?
 
-1. Open the app inside **Pi Browser**
-2. Connect using Pi Authentication
-3. Add activity proofs using predefined templates
-4. View your personal profile card
-5. Export your proofs when needed
+After authenticating with Pi, users can:
+- record personal Pi-related activities
+- categorize them for personal reference
+- add optional notes
+- view their activity history over time
 
-All data remains under the **user’s control**.
-
----
-
-## 🔐 Privacy by Design
-
-- No data is shared automatically
-- No public profiles are enabled by default
-- Proofs are stored locally in the user’s browser
-- Authentication is used only to identify the user
+All data is stored **locally on the user’s device**.
 
 ---
 
-## ⚠️ Requirements
+## What this app does NOT do
 
-- Pi Browser
-- Pi Network account
+- No social features
+- No public profiles
+- No content sharing
+- No payments or rewards
+- No data synchronization
+- No analytics or tracking
 
-This dApp is **not accessible from standard browsers**.
-
----
-
-## 🚫 What This App Is NOT
-
-- No financial promises
-- No rewards or incentives for sharing
-- No advertising or referral mechanics
-- No speculative reputation or scoring system
+Profile Pi Card is intentionally minimal.
 
 ---
 
-## 🛠️ Technology Stack
+## Authentication
 
-- Vite
-- React
-- TypeScript
-- Pi Network SDK
+The app uses **Pi Authentication** only to identify the user.
+Only the Pi username is accessed.
 
----
-
-## 📄 Legal
-
-- [Privacy Policy](./PRIVACY_POLICY.md)
-- [Terms of Service](./TERMS_OF_SERVICE.md)
+Authentication is triggered **explicitly by user action**.
 
 ---
 
-## 📬 Contact
+## Data Storage
 
-For questions or support, please contact the developer through the Pi Network developer portal.
+- All journal entries are stored locally using browser storage.
+- No data is transmitted to external servers.
+- Users remain fully in control of their data.
+
+---
+
+## Platform
+
+- Works exclusively inside **Pi Browser**
+- Built with React + Vite
+- Deployed on Vercel
+
+---
+
+## Status
+
+This app is in active development.
+Future updates may introduce optional features after Pi Network approval.
