@@ -8,6 +8,15 @@ type Activity = {
   createdAt: string;
 };
 
+const PRESET_CATEGORIES = [
+  "Event participation",
+  "Community contribution",
+  "Learning",
+  "Testing / Feedback",
+  "Personal milestone",
+  "Other",
+];
+
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -17,6 +26,7 @@ export default function App() {
   // form state
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -44,13 +54,16 @@ export default function App() {
   };
 
   const addActivity = () => {
-    if (!title || !category) return;
+    const finalCategory =
+      category === "Other" ? customCategory.trim() : category;
+
+    if (!title || !finalCategory) return;
 
     setActivities([
       {
         id: crypto.randomUUID(),
         title,
-        category,
+        category: finalCategory,
         note,
         createdAt: new Date().toISOString(),
       },
@@ -59,6 +72,7 @@ export default function App() {
 
     setTitle("");
     setCategory("");
+    setCustomCategory("");
     setNote("");
   };
 
@@ -87,21 +101,39 @@ export default function App() {
 
           <div style={styles.card}>
             <h2>Add Activity</h2>
+
             <input
               placeholder="Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <input
-              placeholder="Category"
+
+            <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-            />
+            >
+              <option value="">Select category</option>
+              {PRESET_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+
+            {category === "Other" && (
+              <input
+                placeholder="Custom category"
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+              />
+            )}
+
             <textarea
               placeholder="Optional note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
+
             <button style={styles.primary} onClick={addActivity}>
               Save activity
             </button>
@@ -113,7 +145,7 @@ export default function App() {
             {activities.map((a) => (
               <div key={a.id} style={styles.item}>
                 <strong>{a.title}</strong>
-                <small>{a.category}</small>
+                <div style={{ opacity: 0.8 }}>{a.category}</div>
                 {a.note && <p>{a.note}</p>}
                 <small>{new Date(a.createdAt).toLocaleString()}</small>
               </div>
@@ -125,8 +157,8 @@ export default function App() {
       {showPrivacy && (
         <Modal title="Privacy Policy" onClose={() => setShowPrivacy(false)}>
           <p>
-            Profile Pi Card respects your privacy.  
-            Data is stored locally on your device.  
+            Profile Pi Card respects your privacy.<br />
+            Data is stored locally on your device.<br />
             No tracking, no sharing, no third-party analytics.
           </p>
         </Modal>
@@ -135,8 +167,8 @@ export default function App() {
       {showTerms && (
         <Modal title="Terms of Service" onClose={() => setShowTerms(false)}>
           <p>
-            This app is a personal utility tool.  
-            No payments, no rewards, no guarantees.  
+            This app is a personal utility tool.<br />
+            No payments, no rewards, no guarantees.<br />
             Use at your own discretion.
           </p>
         </Modal>
@@ -177,12 +209,16 @@ const styles: any = {
     padding: "10px 16px",
     border: "none",
     fontWeight: "bold",
+    marginTop: 8,
   },
   card: {
     background: "#141a2b",
     padding: 16,
     borderRadius: 8,
     marginTop: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
   },
   actions: {
     display: "flex",
