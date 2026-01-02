@@ -130,7 +130,9 @@ export default function App() {
       {/* HEADER */}
       <div className="card">
         <h1>Profile Pi Card</h1>
-        <p className="subtitle">Your personal Pi activity journal</p>
+        <p className="subtitle">
+          A private record of your Pi journey.
+        </p>
 
         <div className="user-card">
           <strong>@{username ?? "PiUser"}</strong>
