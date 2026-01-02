@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-
-declare global {
-  interface Window {
-    Pi?: any;
-  }
-}
+import { initPiSdk, authenticatePi } from "./pi";
 
 type Activity = {
   id: string;
@@ -14,97 +9,71 @@ type Activity = {
   date: string;
 };
 
-const STORAGE_KEY = "pi_journal_entries";
-const USERNAME_KEY = "pi_username";
-
 const CATEGORIES = [
   "App usage",
   "Community contribution",
   "Learning",
-  "Testing / Feedback",
-  "Governance",
+  "Testing",
+  "Exploration",
   "Other",
 ];
-
-function calculateStreak(entries: Activity[]): number {
-  if (entries.length === 0) return 0;
-
-  const days = new Set(
-    entries.map((e) => new Date(e.date).toDateString())
-  );
-
-  let streak = 0;
-  const current = new Date();
-
-  while (days.has(current.toDateString())) {
-    streak++;
-    current.setDate(current.getDate() - 1);
-  }
-
-  return streak;
-}
 
 export default function App() {
   const [piReady, setPiReady] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
 
-  const [username, setUsername] = useState<string | null>(() =>
-    localStorage.getItem(USERNAME_KEY)
-  );
-
-  const [activities, setActivities] = useState<Activity[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    } catch {
-      return [];
-    }
-  });
-
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Init Pi SDK once
+  /* ---------------- Pi SDK init ---------------- */
   useEffect(() => {
-    if (!window.Pi) return;
     try {
-      window.Pi.init({ version: "2.0", sandbox: false });
+      initPiSdk();
       setPiReady(true);
-    } catch (e) {
-      console.error("Pi init failed", e);
+    } catch {
+      setPiReady(false);
     }
   }, []);
 
-  // Persist journal
+  /* ---------------- Load local data ---------------- */
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
+    const storedUser = localStorage.getItem("pi_username");
+    const storedActivities = localStorage.getItem("activities");
+
+    if (storedUser) setUsername(storedUser);
+    if (storedActivities) setActivities(JSON.parse(storedActivities));
+  }, []);
+
+  /* ---------------- Persist activities ---------------- */
+  useEffect(() => {
+    localStorage.setItem("activities", JSON.stringify(activities));
   }, [activities]);
 
-  async function connectPi() {
-    if (!window.Pi) return;
-    setAuthenticating(true);
-
+  /* ---------------- Auth ---------------- */
+  const connectPi = async () => {
+    if (!piReady) return;
     try {
-      const auth = await window.Pi.authenticate(
-        ["username"],
-        { onIncompletePaymentFound: () => {} }
-      );
-
+      setAuthenticating(true);
+      const auth = await authenticatePi();
       if (auth?.user?.username) {
         setUsername(auth.user.username);
-        localStorage.setItem(USERNAME_KEY, auth.user.username);
+        localStorage.setItem("pi_username", auth.user.username);
       }
-    } catch (e) {
-      console.error("Authentication error", e);
+    } catch {
+      alert("Pi authentication failed.");
     } finally {
       setAuthenticating(false);
     }
-  }
+  };
 
-  function saveActivity() {
+  /* ---------------- Save activity ---------------- */
+  const saveActivity = () => {
     if (!title || !category) return;
 
-    const entry: Activity = {
+    const newActivity: Activity = {
       id: crypto.randomUUID(),
       title,
       category,
@@ -112,36 +81,24 @@ export default function App() {
       date: new Date().toISOString(),
     };
 
-    setActivities([entry, ...activities]);
+    setActivities([newActivity, ...activities]);
     setTitle("");
     setCategory("");
     setNotes("");
-  }
-
-  const streak = calculateStreak(activities);
-
-  const todayPrompt =
-    activities.length === 0
-      ? "Did you interact with a Pi app or feature recently?"
-      : "Did you contribute to the Pi community today?";
+  };
 
   return (
-    <div className="container">
+    <main className="container">
       {/* HEADER */}
-      <div className="card">
+      <section className="card">
         <h1>Profile Pi Card</h1>
-        <p className="subtitle">
-          A private record of your Pi journey.
-        </p>
+        <p className="subtitle">A private record of your Pi journey.</p>
 
         <div className="user-card">
           <strong>@{username ?? "PiUser"}</strong>
           <div className="status">
             {username ? "Pi identity connected" : "Not connected"}
           </div>
-          {streak > 0 && (
-            <div className="streak">🔥 {streak}-day activity streak</div>
-          )}
         </div>
 
         {!username && piReady && (
@@ -153,19 +110,21 @@ export default function App() {
             {authenticating ? "Connecting…" : "Connect with Pi"}
           </button>
         )}
-      </div>
+      </section>
 
       {/* PROMPT */}
       {username && (
-        <div className="card">
+        <section className="card soft">
           <small className="muted">Today's prompt</small>
-          <p className="prompt">{todayPrompt}</p>
-        </div>
+          <p className="prompt">
+            Did you interact with a Pi app or feature recently?
+          </p>
+        </section>
       )}
 
       {/* ADD ACTIVITY */}
       {username && (
-        <div className="card">
+        <section className="card">
           <h2>Capture activity</h2>
 
           <input
@@ -199,57 +158,51 @@ export default function App() {
           <small className="muted">
             Your journal lives on this device only.
           </small>
-        </div>
+        </section>
       )}
 
       {/* JOURNAL */}
       {username && (
-        <div className="card">
+        <section className="card">
           <h2>Your journal</h2>
 
-          {activities.length === 0 && (
+          {activities.length === 0 ? (
             <p className="empty">
               Nothing here yet — and that’s okay.
               <br />
-              Your Pi journey is just starting.
-              <br />
-              Capture one small activity today.
+              Capture one small Pi activity today.
             </p>
+          ) : (
+            <ul className="list">
+              {activities.map((a) => (
+                <li key={a.id}>
+                  <strong>{a.title}</strong>
+                  <div className="meta">
+                    {a.category} · {new Date(a.date).toLocaleString()}
+                  </div>
+                  {a.notes && <p>{a.notes}</p>}
+                </li>
+              ))}
+            </ul>
           )}
-
-          {activities.map((a) => (
-            <div key={a.id} className="entry">
-              <strong>{a.title}</strong>
-              <div className="meta">
-                {a.category} · {new Date(a.date).toLocaleDateString()}
-              </div>
-              {a.notes && <p>{a.notes}</p>}
-            </div>
-          ))}
-        </div>
+        </section>
       )}
 
       {/* FOOTER */}
       <footer>
         <button
-          onClick={() =>
-            alert(
-              "Privacy Policy:\n\nProfile Pi Card stores all entries locally on your device.\nNo data is shared, tracked, or transmitted."
-            )
-          }
+          className="link"
+          onClick={() => alert("Privacy Policy is available in-app.")}
         >
           Privacy
         </button>
         <button
-          onClick={() =>
-            alert(
-              "Terms of Service:\n\nThis app records personal activity only.\nNo payments, no guarantees, no enforcement."
-            )
-          }
+          className="link"
+          onClick={() => alert("Terms of Service are available in-app.")}
         >
           Terms
         </button>
       </footer>
-    </div>
+    </main>
   );
 }
