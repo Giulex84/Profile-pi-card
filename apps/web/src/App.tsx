@@ -23,7 +23,6 @@ export default function App() {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
 
-  // form state
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
@@ -79,7 +78,9 @@ export default function App() {
   return (
     <div style={styles.page}>
       <h1>Profile Pi Card</h1>
-      <p>Your personal Pi activity journal</p>
+      <p style={styles.subtitle}>
+        Your personal Pi activity journal — private, simple, under your control.
+      </p>
 
       {!user && (
         <button style={styles.primary} onClick={connectWithPi}>
@@ -91,7 +92,9 @@ export default function App() {
         <>
           <div style={styles.card}>
             <strong>@{user.username}</strong>
-            <p>Pi identity connected</p>
+            <p style={{ opacity: 0.8 }}>
+              Your Pi identity is connected. Activities remain private to you.
+            </p>
           </div>
 
           <div style={styles.actions}>
@@ -100,10 +103,13 @@ export default function App() {
           </div>
 
           <div style={styles.card}>
-            <h2>Add Activity</h2>
+            <h2>Add an activity</h2>
+            <p style={styles.helper}>
+              Record something you did related to Pi — for your own reference.
+            </p>
 
             <input
-              placeholder="Title"
+              placeholder="What did you do?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
@@ -112,7 +118,7 @@ export default function App() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              <option value="">Select category</option>
+              <option value="">Choose a category</option>
               {PRESET_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -122,14 +128,14 @@ export default function App() {
 
             {category === "Other" && (
               <input
-                placeholder="Custom category"
+                placeholder="Describe your category"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
               />
             )}
 
             <textarea
-              placeholder="Optional note"
+              placeholder="Optional notes (why it mattered, what you learned, etc.)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
@@ -140,8 +146,21 @@ export default function App() {
           </div>
 
           <div style={styles.card}>
-            <h2>Your activities</h2>
-            {activities.length === 0 && <p>No activities yet.</p>}
+            <h2>Your activity journal</h2>
+
+            {activities.length === 0 && (
+              <div style={styles.empty}>
+                <p>
+                  Nothing here yet.
+                  <br />
+                  This journal is private and always under your control.
+                </p>
+                <p style={{ opacity: 0.7 }}>
+                  Start by adding your first activity whenever you’re ready.
+                </p>
+              </div>
+            )}
+
             {activities.map((a) => (
               <div key={a.id} style={styles.item}>
                 <strong>{a.title}</strong>
@@ -158,7 +177,7 @@ export default function App() {
         <Modal title="Privacy Policy" onClose={() => setShowPrivacy(false)}>
           <p>
             Profile Pi Card respects your privacy.<br />
-            Data is stored locally on your device.<br />
+            Activities are stored locally on your device.<br />
             No tracking, no sharing, no third-party analytics.
           </p>
         </Modal>
@@ -167,9 +186,9 @@ export default function App() {
       {showTerms && (
         <Modal title="Terms of Service" onClose={() => setShowTerms(false)}>
           <p>
-            This app is a personal utility tool.<br />
-            No payments, no rewards, no guarantees.<br />
-            Use at your own discretion.
+            Profile Pi Card is a personal journaling utility.<br />
+            It does not process payments, rewards, or guarantees.<br />
+            Use the app at your own discretion.
           </p>
         </Modal>
       )}
@@ -204,6 +223,14 @@ const styles: any = {
     background: "#0b0f1a",
     minHeight: "100vh",
   },
+  subtitle: {
+    opacity: 0.8,
+    marginBottom: 20,
+  },
+  helper: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
   primary: {
     background: "#f5c518",
     padding: "10px 16px",
@@ -228,6 +255,10 @@ const styles: any = {
   item: {
     borderBottom: "1px solid #222",
     padding: "8px 0",
+  },
+  empty: {
+    padding: 12,
+    textAlign: "center",
   },
   overlay: {
     position: "fixed",
