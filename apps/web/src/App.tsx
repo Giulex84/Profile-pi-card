@@ -1,220 +1,220 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+
+declare global {
+  interface Window {
+    Pi?: any;
+  }
+}
 
 type Activity = {
   id: string;
   title: string;
   category: string;
   notes?: string;
-  createdAt: string;
+  date: string;
 };
 
-const STORAGE_KEY = "pi_profile_activities";
+const STORAGE_KEY = "pi_journal_entries";
+const USERNAME_KEY = "pi_username";
 
 const CATEGORIES = [
-  "Pi App Usage",
-  "Community",
+  "App usage",
+  "Community contribution",
   "Learning",
-  "Testing",
-  "Exploration",
-  "Other",
-];
-
-const PROMPTS = [
-  "Did you interact with a Pi app or feature today?",
-  "Did you discover something new in the Pi ecosystem?",
-  "Did you contribute to the Pi community recently?",
-  "Did you test or explore a new Pi experience?",
-  "What Pi-related activity stood out today?",
+  "Testing / Feedback",
+  "Governance",
+  "Other"
 ];
 
 export default function App() {
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [piReady, setPiReady] = useState(false);
+  const [authenticating, setAuthenticating] = useState(false);
+  const [username, setUsername] = useState<string | null>(() =>
+    localStorage.getItem(USERNAME_KEY)
+  );
+
+  const [activities, setActivities] = useState<Activity[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  });
+
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
-  const [customCategory, setCustomCategory] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-
-  const username =
-    (window as any)?.Pi?.user?.username ?? "@PiUser";
-
-  /* ---------- load persisted data ---------- */
+  // ---- Pi SDK init (ONCE) ----
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.Pi) return;
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setActivities(JSON.parse(stored));
-    } catch {
-      setActivities([]);
+      window.Pi.init({ version: "2.0", sandbox: false });
+      setPiReady(true);
+    } catch (e) {
+      console.error("Pi init failed", e);
     }
   }, []);
 
-  /* ---------- persist on change ---------- */
+  // ---- Persist journal ----
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
   }, [activities]);
 
-  /* ---------- daily prompt ---------- */
-  const todayPrompt = useMemo(() => {
-    const day = new Date().getDate();
-    return PROMPTS[day % PROMPTS.length];
-  }, []);
+  // ---- Connect Pi ----
+  async function connectPi() {
+    if (!window.Pi) return;
+    setAuthenticating(true);
 
-  /* ---------- handlers ---------- */
+    try {
+      const auth = await window.Pi.authenticate(
+        ["username"],
+        { onIncompletePaymentFound: () => {} }
+      );
+
+      if (auth?.user?.username) {
+        setUsername(auth.user.username);
+        localStorage.setItem(USERNAME_KEY, auth.user.username);
+      }
+    } catch (e) {
+      console.error("Authentication error", e);
+    } finally {
+      setAuthenticating(false);
+    }
+  }
+
+  // ---- Add activity ----
   function saveActivity() {
-    if (!title.trim()) return;
+    if (!title || !category) return;
 
-    const finalCategory =
-      category === "Other" && customCategory.trim()
-        ? customCategory.trim()
-        : category;
+    const entry: Activity = {
+      id: crypto.randomUUID(),
+      title,
+      category,
+      notes,
+      date: new Date().toISOString()
+    };
 
-    if (!finalCategory) return;
-
-    setActivities((prev) => [
-      {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        category: finalCategory,
-        notes: notes.trim() || undefined,
-        createdAt: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-
+    setActivities([entry, ...activities]);
     setTitle("");
     setCategory("");
-    setCustomCategory("");
     setNotes("");
   }
 
-  /* ---------- UI ---------- */
+  const todayPrompt =
+    activities.length === 0
+      ? "Did you interact with a Pi app or feature recently?"
+      : "Did you contribute to the Pi community today?";
+
+  // ---- UI ----
   return (
-    <div className="app">
-      <header className="card">
+    <div className="container">
+      {/* HEADER */}
+      <div className="card">
         <h1>Profile Pi Card</h1>
         <p className="subtitle">Your personal Pi activity journal</p>
 
         <div className="user-card">
-          <strong>{username}</strong>
-          <span>Pi identity connected</span>
+          <strong>@{username ?? "PiUser"}</strong>
+          <div className="status">
+            {username ? "Pi identity connected" : "Not connected"}
+          </div>
         </div>
-      </header>
 
-      {/* Prompt */}
-      <section className="card prompt">
-        <small>Today's prompt</small>
-        <p>{todayPrompt}</p>
-      </section>
+        {!username && piReady && (
+          <button
+            className="primary"
+            onClick={connectPi}
+            disabled={authenticating}
+          >
+            {authenticating ? "Connecting…" : "Connect with Pi"}
+          </button>
+        )}
+      </div>
 
-      {/* Add Activity */}
-      <section className="card">
-        <h2>Add activity</h2>
+      {/* PROMPT */}
+      {username && (
+        <div className="card">
+          <small className="muted">Today's prompt</small>
+          <p className="prompt">{todayPrompt}</p>
+        </div>
+      )}
 
-        <input
-          placeholder="What did you do?"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+      {/* ADD ACTIVITY */}
+      {username && (
+        <div className="card">
+          <h2>Add activity</h2>
 
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option value="">Choose category</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-
-        {category === "Other" && (
           <input
-            placeholder="Custom category"
-            value={customCategory}
-            onChange={(e) => setCustomCategory(e.target.value)}
+            placeholder="What did you do?"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
-        )}
 
-        <textarea
-          placeholder="Optional notes (why it mattered, what you learned…) "
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-
-        <button onClick={saveActivity}>Save to journal</button>
-
-        <p className="hint">
-          Entries are stored locally on this device.
-        </p>
-      </section>
-
-      {/* Activity list */}
-      <section className="card">
-        <h2>Your journal</h2>
-
-        {activities.length === 0 ? (
-          <p className="empty">
-            Your journal is empty — start by capturing one small Pi activity.
-            Consistency builds your personal Pi history.
-          </p>
-        ) : (
-          <ul className="list">
-            {activities.map((a) => (
-              <li key={a.id}>
-                <strong>{a.title}</strong>
-                <span>{a.category}</span>
-                <small>
-                  {new Date(a.createdAt).toLocaleString()}
-                </small>
-                {a.notes && <p>{a.notes}</p>}
-              </li>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">Choose category</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
-          </ul>
-        )}
-      </section>
+          </select>
 
-      {/* Footer */}
+          <textarea
+            placeholder="Optional notes (why it mattered, what you learned…)”
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+
+          <button className="primary" onClick={saveActivity}>
+            Save to journal
+          </button>
+
+          <small className="muted">
+            Entries are stored locally on this device.
+          </small>
+        </div>
+      )}
+
+      {/* JOURNAL */}
+      {username && (
+        <div className="card">
+          <h2>Your journal</h2>
+
+          {activities.length === 0 && (
+            <p className="empty">
+              Your journal is empty — start by capturing one small Pi activity.
+              Consistency builds your personal Pi history.
+            </p>
+          )}
+
+          {activities.map((a) => (
+            <div key={a.id} className="entry">
+              <strong>{a.title}</strong>
+              <div className="meta">
+                {a.category} ·{" "}
+                {new Date(a.date).toLocaleDateString()}
+              </div>
+              {a.notes && <p>{a.notes}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* FOOTER */}
       <footer>
-        <button onClick={() => setShowPrivacy(true)}>Privacy</button>
-        <span>·</span>
-        <button onClick={() => setShowTerms(true)}>Terms</button>
+        <button onClick={() => alert("Privacy Policy:\n\nAll data stays on your device.\nNo data is shared or tracked.")}>
+          Privacy
+        </button>
+        <button onClick={() => alert("Terms of Service:\n\nThis app records personal activity only.\nNo payments. No guarantees.")}>
+          Terms
+        </button>
       </footer>
-
-      {/* Privacy modal */}
-      {showPrivacy && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>Privacy Policy</h3>
-            <p>
-              Profile Pi Card respects your privacy.  
-              Activities are stored locally on your device.
-              No data is shared or transmitted.
-            </p>
-            <button onClick={() => setShowPrivacy(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Terms modal */}
-      {showTerms && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>Terms of Service</h3>
-            <p>
-              This app provides a personal journaling utility.
-              It does not process payments, rewards, or settlements.
-            </p>
-            <button onClick={() => setShowTerms(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
