@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { initPiSdk, authenticatePi, PiAuthPayload } from "./pi";
 
-/* ---------------- TYPES ---------------- */
+/* ---------- TYPES ---------- */
 
 type AppState =
   | "detecting"
@@ -13,75 +13,40 @@ type AppState =
   | "authenticated"
   | "error";
 
-type ActivityType =
-  | "event"
-  | "task"
-  | "community"
-  | "beta"
-  | "identity"
-  | "supporter"
-  | "custom";
-
-type Activity = {
-  id: string;
-  type: ActivityType;
-  title: string;
-  note?: string;
-  createdAt: string;
-  updatedAt?: string;
-};
-
-/* ---------------- CONSTANTS ---------------- */
-
-const STORAGE_KEY = "pi_activity_journal";
-const LEGAL_SEEN_KEY = "pi_legal_seen_v1";
-
-/* ---------------- LEGAL TEXT ---------------- */
+/* ---------- LEGAL TEXT ---------- */
 
 const PRIVACY_TEXT = `
 Profile Pi Card respects your privacy.
 
-• The app uses Pi Authentication only to identify you.
-• Activities are stored locally on your device.
-• No data is shared automatically.
-• No third-party tracking is used.
-• You can export your data manually at any time.
+• Pi Authentication is used only to identify you.
+• All activity entries are stored locally on your device.
+• No data is shared automatically with third parties.
+• No analytics or tracking systems are used.
+• You can export or delete your data at any time.
 
 Your data always remains under your control.
 `;
 
 const TERMS_TEXT = `
-Profile Pi Card is a personal utility.
+Profile Pi Card is a personal activity journal.
 
-• The app provides no rewards or payments.
-• Activities have no financial or reputational value.
-• The service is provided "as is".
+• The app does not provide payments, rewards, or compensation.
+• Recorded activities have no financial or reputational value.
+• The service is provided "as is", without warranties.
 • You are responsible for the content you record.
 
 By using this app, you agree to these terms.
 `;
 
-/* ---------------- HELPERS ---------------- */
-
-function uuid(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
-/* ---------------- APP ---------------- */
+/* ---------- APP ---------- */
 
 export default function App() {
   const [state, setState] = useState<AppState>("detecting");
   const [error, setError] = useState<string | null>(null);
   const [auth, setAuth] = useState<PiAuthPayload | null>(null);
 
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
-  const [showLegalIntro, setShowLegalIntro] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +58,6 @@ export default function App() {
       while (elapsed < timeoutMs) {
         if ((window as any).Pi) {
           initPiSdk();
-          loadActivities();
           if (!cancelled) setState("ready");
           return;
         }
@@ -110,24 +74,14 @@ export default function App() {
     };
   }, []);
 
-  function loadActivities() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) setActivities(JSON.parse(raw));
-  }
-
   async function handleLogin() {
     setState("authenticating");
     try {
       const payload = await authenticatePi();
       setAuth(payload);
       setState("authenticated");
-
-      if (!localStorage.getItem(LEGAL_SEEN_KEY)) {
-        setShowLegalIntro(true);
-        localStorage.setItem(LEGAL_SEEN_KEY, "true");
-      }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Authentication failed");
       setState("ready");
     }
   }
@@ -139,36 +93,35 @@ export default function App() {
 
   return (
     <div style={styles.app}>
-      <h1>Profile Pi Card</h1>
-      <p>Your personal Pi activity journal</p>
+      <header style={styles.header}>
+        <h1>Profile Pi Card</h1>
+        <p>Your personal Pi activity journal</p>
+      </header>
 
       {state !== "authenticated" && (
-        <button onClick={handleLogin}>Connect with Pi</button>
+        <button style={styles.primaryButton} onClick={handleLogin}>
+          {state === "authenticating" ? "Connecting…" : "Connect with Pi"}
+        </button>
       )}
 
-      {showLegalIntro && (
-        <Modal onClose={() => setShowLegalIntro(false)}>
-          <h2>Privacy & Terms</h2>
-          <p>
-            This app is a personal utility. Privacy Policy and Terms of Service
-            are available inside the app at any time.
-          </p>
-          <button onClick={() => setShowLegalIntro(false)}>Continue</button>
-        </Modal>
+      {state === "authenticated" && (
+        <section style={styles.card}>
+          <strong>@{auth?.user.username}</strong>
+          <p>Pi identity connected</p>
+        </section>
       )}
 
+      {/* LEGAL MODALS */}
       {showPrivacy && (
-        <Modal onClose={() => setShowPrivacy(false)}>
-          <h2>Privacy Policy</h2>
-          <pre>{PRIVACY_TEXT}</pre>
-        </Modal>
+        <LegalModal title="Privacy Policy" onClose={() => setShowPrivacy(false)}>
+          {PRIVACY_TEXT}
+        </LegalModal>
       )}
 
       {showTerms && (
-        <Modal onClose={() => setShowTerms(false)}>
-          <h2>Terms of Service</h2>
-          <pre>{TERMS_TEXT}</pre>
-        </Modal>
+        <LegalModal title="Terms of Service" onClose={() => setShowTerms(false)}>
+          {TERMS_TEXT}
+        </LegalModal>
       )}
 
       {state === "authenticated" && (
@@ -181,39 +134,104 @@ export default function App() {
   );
 }
 
-/* ---------------- UI ---------------- */
+/* ---------- COMPONENTS ---------- */
 
-function Modal({ children, onClose }: any) {
+function LegalModal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: string;
+  onClose: () => void;
+}) {
   return (
     <div style={styles.modalBg}>
       <div style={styles.modal}>
-        {children}
-        <button onClick={onClose}>Close</button>
+        <h2>{title}</h2>
+        <div style={styles.modalContent}>
+          <pre style={styles.pre}>{children}</pre>
+        </div>
+        <button style={styles.secondaryButton} onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>
   );
 }
 
-function Centered({ children }: any) {
+function Centered({ children }: { children: any }) {
   return <div style={styles.centered}>{children}</div>;
 }
 
+/* ---------- STYLES ---------- */
+
 const styles: any = {
-  app: { padding: 16, color: "#fff", background: "#0b0f1a", minHeight: "100vh" },
-  footer: { marginTop: 32, display: "flex", gap: 12 },
+  app: {
+    minHeight: "100vh",
+    background: "#0b0f1a",
+    color: "#fff",
+    padding: "1rem",
+    maxWidth: 480,
+    margin: "0 auto",
+  },
+  header: { textAlign: "center", marginBottom: "1rem" },
+  card: {
+    background: "#141a2a",
+    borderRadius: 14,
+    padding: "1rem",
+    marginBottom: "1rem",
+  },
+  primaryButton: {
+    width: "100%",
+    padding: "0.7rem",
+    borderRadius: 12,
+    border: "none",
+    background: "#facc15",
+    fontWeight: 600,
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "1rem",
+    marginTop: "2rem",
+    opacity: 0.8,
+  },
   modalBg: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.7)",
+    background: "rgba(0,0,0,0.75)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 1000,
   },
   modal: {
     background: "#141a2a",
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
+    padding: "1rem",
     maxWidth: 420,
+    width: "90%",
+    maxHeight: "80vh",
+    display: "flex",
+    flexDirection: "column",
+  },
+  modalContent: {
+    overflowY: "auto",
+    marginBottom: "1rem",
+  },
+  pre: {
+    whiteSpace: "pre-wrap",
+    fontFamily: "inherit",
+    fontSize: "0.9rem",
+    lineHeight: 1.4,
+  },
+  secondaryButton: {
+    padding: "0.6rem",
+    borderRadius: 12,
+    border: "none",
+    background: "#1f2937",
+    color: "#fff",
   },
   centered: {
     minHeight: "100vh",
