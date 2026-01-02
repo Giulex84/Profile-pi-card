@@ -1,76 +1,50 @@
-
 # Privacy Policy
 
-Last updated: January 2026
-
-Profile Pi Card respects user privacy and is designed following a **privacy-by-design** approach.
+Profile Pi Card respects user privacy by design.
 
 ---
 
-## 1. Information We Collect
+## Data Collection
 
-Profile Pi Card collects only the minimum data required to function:
+The app collects only the following information:
+- Pi username (via Pi Authentication)
+- User-created journal entries
 
-- Pi username (via Pi Network Authentication)
-- Internal Pi user identifier (UID)
-- User-created activity proofs
-
-No additional personal information is collected.
+No other personal data is collected.
 
 ---
 
-## 2. How Information Is Used
+## Data Storage
 
-Collected information is used solely to:
-
-- Authenticate the user via Pi Network
-- Display the user’s profile card
-- Associate activity proofs with the authenticated user
-- Allow the user to export their own data
+- All data is stored **locally on the user’s device**
+- No data is sent to external servers
+- No cloud storage is used
 
 ---
 
-## 3. Data Storage
+## Third Parties
 
-- Activity proofs are stored **locally** in the user’s browser
-- No automatic transmission of proofs to external servers
-- No third-party analytics or tracking tools are used
-
----
-
-## 4. Data Sharing
-
-Profile Pi Card does **not**:
-
-- Share user data with third parties
-- Publish user profiles publicly
-- Index user data for discovery
-- Sell or monetize personal data
-
-Any data sharing occurs only if explicitly initiated by the user (e.g. exporting their own data).
+- No third-party analytics
+- No tracking scripts
+- No advertising services
 
 ---
 
-## 5. Security
+## Data Sharing
 
-Authentication is handled using the official Pi Network SDK.  
-The app does not store Pi account credentials.
-
----
-
-## 6. Children’s Privacy
-
-Profile Pi Card does not knowingly collect data from children under the age required by Pi Network policies.
+Profile Pi Card does not share user data with any third party.
 
 ---
 
-## 7. Changes to This Policy
+## User Control
 
-This Privacy Policy may be updated to reflect improvements or regulatory requirements.  
-Changes will be published within the repository.
+Users can:
+- add, edit, or delete their local entries
+- clear browser storage at any time
 
 ---
 
-## 8. Contact
+## Changes
 
-For privacy-related questions, please contact the developer via the Pi Network developer portal.
+This privacy policy may be updated in the future.
+Any changes will be reflected inside the app.
