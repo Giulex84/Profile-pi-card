@@ -23,7 +23,7 @@ const CATEGORIES = [
   "Learning",
   "Testing / Feedback",
   "Governance",
-  "Other"
+  "Other",
 ];
 
 export default function App() {
@@ -45,11 +45,9 @@ export default function App() {
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
 
-  // ---- Pi SDK init (ONCE) ----
+  // Init Pi SDK once
   useEffect(() => {
-    if (typeof window === "undefined") return;
     if (!window.Pi) return;
-
     try {
       window.Pi.init({ version: "2.0", sandbox: false });
       setPiReady(true);
@@ -58,12 +56,11 @@ export default function App() {
     }
   }, []);
 
-  // ---- Persist journal ----
+  // Persist journal
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
   }, [activities]);
 
-  // ---- Connect Pi ----
   async function connectPi() {
     if (!window.Pi) return;
     setAuthenticating(true);
@@ -85,7 +82,6 @@ export default function App() {
     }
   }
 
-  // ---- Add activity ----
   function saveActivity() {
     if (!title || !category) return;
 
@@ -94,7 +90,7 @@ export default function App() {
       title,
       category,
       notes,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
 
     setActivities([entry, ...activities]);
@@ -108,7 +104,6 @@ export default function App() {
       ? "Did you interact with a Pi app or feature recently?"
       : "Did you contribute to the Pi community today?";
 
-  // ---- UI ----
   return (
     <div className="container">
       {/* HEADER */}
@@ -166,7 +161,7 @@ export default function App() {
           </select>
 
           <textarea
-            placeholder="Optional notes (why it mattered, what you learned…)”
+            placeholder="Optional notes (why it mattered, what you learned...)"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -197,8 +192,7 @@ export default function App() {
             <div key={a.id} className="entry">
               <strong>{a.title}</strong>
               <div className="meta">
-                {a.category} ·{" "}
-                {new Date(a.date).toLocaleDateString()}
+                {a.category} · {new Date(a.date).toLocaleDateString()}
               </div>
               {a.notes && <p>{a.notes}</p>}
             </div>
@@ -208,10 +202,22 @@ export default function App() {
 
       {/* FOOTER */}
       <footer>
-        <button onClick={() => alert("Privacy Policy:\n\nAll data stays on your device.\nNo data is shared or tracked.")}>
+        <button
+          onClick={() =>
+            alert(
+              "Privacy Policy:\n\nAll data stays on your device.\nNo data is shared or tracked."
+            )
+          }
+        >
           Privacy
         </button>
-        <button onClick={() => alert("Terms of Service:\n\nThis app records personal activity only.\nNo payments. No guarantees.")}>
+        <button
+          onClick={() =>
+            alert(
+              "Terms of Service:\n\nThis app records personal activity only.\nNo payments. No guarantees."
+            )
+          }
+        >
           Terms
         </button>
       </footer>
