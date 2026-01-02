@@ -26,9 +26,28 @@ const CATEGORIES = [
   "Other",
 ];
 
+function calculateStreak(entries: Activity[]): number {
+  if (entries.length === 0) return 0;
+
+  const days = new Set(
+    entries.map((e) => new Date(e.date).toDateString())
+  );
+
+  let streak = 0;
+  const current = new Date();
+
+  while (days.has(current.toDateString())) {
+    streak++;
+    current.setDate(current.getDate() - 1);
+  }
+
+  return streak;
+}
+
 export default function App() {
   const [piReady, setPiReady] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
+
   const [username, setUsername] = useState<string | null>(() =>
     localStorage.getItem(USERNAME_KEY)
   );
@@ -99,6 +118,8 @@ export default function App() {
     setNotes("");
   }
 
+  const streak = calculateStreak(activities);
+
   const todayPrompt =
     activities.length === 0
       ? "Did you interact with a Pi app or feature recently?"
@@ -116,6 +137,9 @@ export default function App() {
           <div className="status">
             {username ? "Pi identity connected" : "Not connected"}
           </div>
+          {streak > 0 && (
+            <div className="streak">🔥 {streak}-day activity streak</div>
+          )}
         </div>
 
         {!username && piReady && (
@@ -140,7 +164,7 @@ export default function App() {
       {/* ADD ACTIVITY */}
       {username && (
         <div className="card">
-          <h2>Add activity</h2>
+          <h2>Capture activity</h2>
 
           <input
             placeholder="What did you do?"
@@ -152,7 +176,7 @@ export default function App() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
-            <option value="">Choose category</option>
+            <option value="">What kind of activity was this?</option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -167,11 +191,11 @@ export default function App() {
           />
 
           <button className="primary" onClick={saveActivity}>
-            Save to journal
+            Save to Pi journal
           </button>
 
           <small className="muted">
-            Entries are stored locally on this device.
+            Your journal lives on this device only.
           </small>
         </div>
       )}
@@ -183,8 +207,11 @@ export default function App() {
 
           {activities.length === 0 && (
             <p className="empty">
-              Your journal is empty — start by capturing one small Pi activity.
-              Consistency builds your personal Pi history.
+              Nothing here yet — and that’s okay.
+              <br />
+              Your Pi journey is just starting.
+              <br />
+              Capture one small activity today.
             </p>
           )}
 
@@ -205,7 +232,7 @@ export default function App() {
         <button
           onClick={() =>
             alert(
-              "Privacy Policy:\n\nAll data stays on your device.\nNo data is shared or tracked."
+              "Privacy Policy:\n\nProfile Pi Card stores all entries locally on your device.\nNo data is shared, tracked, or transmitted."
             )
           }
         >
@@ -214,7 +241,7 @@ export default function App() {
         <button
           onClick={() =>
             alert(
-              "Terms of Service:\n\nThis app records personal activity only.\nNo payments. No guarantees."
+              "Terms of Service:\n\nThis app records personal activity only.\nNo payments, no guarantees, no enforcement."
             )
           }
         >
