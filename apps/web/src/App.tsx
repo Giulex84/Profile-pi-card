@@ -86,7 +86,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* DAILY PROMPT */}
+      {/* PROMPT */}
       <section className="card">
         <small className="label">Today’s prompt</small>
         <p className="prompt">
@@ -94,31 +94,12 @@ export default function App() {
         </p>
       </section>
 
-      {/* PURPOSE */}
+      {/* WHY */}
       <section className="card">
-        <h2>Why this exists</h2>
+        <h2>Why keep a Pi journal?</h2>
         <p>
-          Pi grows through small actions. Profile Pi Card helps you notice,
-          remember, and reflect on how you explore the Pi ecosystem — one step
-          at a time.
-        </p>
-      </section>
-
-      {/* VALUE */}
-      <section className="card">
-        <h2>Your daily value</h2>
-        <ul>
-          <li>Build awareness of your Pi activity</li>
-          <li>Create a personal learning trail</li>
-          <li>Stay engaged without pressure</li>
-        </ul>
-      </section>
-
-      {/* TRUST */}
-      <section className="card trust">
-        <h2>What this app does NOT do</h2>
-        <p>
-          No payments. No transfers. No tracking. No data leaves your device.
+          Small actions matter. Capturing your activity helps you reflect,
+          learn, and build a personal Pi history over time.
         </p>
       </section>
 
@@ -142,7 +123,7 @@ export default function App() {
         </select>
 
         <textarea
-          placeholder="Optional notes (why it mattered, what you learned…)”
+          placeholder="Optional notes (why it mattered, what you learned...)"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
@@ -176,24 +157,25 @@ export default function App() {
         )}
       </section>
 
-      {/* MODALS */}
+      {/* PRIVACY */}
       {showPrivacy && (
         <div className="modal">
           <h3>Privacy Policy</h3>
           <p>
-            This app uses Pi authentication only to identify you. All journal
-            entries are stored locally on your device. No data is shared.
+            This app uses Pi authentication only to identify you. All data is
+            stored locally on your device. No tracking, no sharing.
           </p>
           <button onClick={() => setShowPrivacy(false)}>Close</button>
         </div>
       )}
 
+      {/* TERMS */}
       {showTerms && (
         <div className="modal">
           <h3>Terms of Service</h3>
           <p>
             Profile Pi Card is a personal journaling tool. It does not process
-            payments, transfers, or settlements of any kind.
+            payments, transfers, or settlements.
           </p>
           <button onClick={() => setShowTerms(false)}>Close</button>
         </div>
