@@ -7,8 +7,55 @@ type Activity = {
   date: string;
 };
 
+function buildNarrativeTimeline(activities: Activity[]): string[] {
+  if (activities.length === 0) {
+    return [
+      "Your Pi journey hasn’t been recorded yet.",
+      "Small actions matter. Start by capturing one activity."
+    ];
+  }
+
+  const days = new Set(
+    activities.map(a => new Date(a.date).toDateString())
+  );
+
+  const categories = new Set(
+    activities.map(a => a.category)
+  );
+
+  const timeline: string[] = [];
+
+  timeline.push(
+    `You’ve been active on ${days.size} different day${
+      days.size > 1 ? "s" : ""
+    } inside the Pi ecosystem.`
+  );
+
+  if (categories.size > 1) {
+    timeline.push(
+      `Your activity spans ${categories.size} different areas of Pi.`
+    );
+  } else {
+    timeline.push(
+      `You’ve focused consistently on one area of Pi so far.`
+    );
+  }
+
+  if (activities.length >= 5) {
+    timeline.push(
+      "Consistency is building. Your Pi activity history is taking shape."
+    );
+  } else {
+    timeline.push(
+      "Every entry adds clarity to your personal Pi path."
+    );
+  }
+
+  return timeline;
+}
+
 export default function App() {
-  const [username, setUsername] = useState<string>("…");
+  const [username, setUsername] = useState<string>("PiUser");
   const [activities, setActivities] = useState<Activity[]>([]);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -19,19 +66,13 @@ export default function App() {
   /* ---------- INIT ---------- */
   useEffect(() => {
     const storedUser = localStorage.getItem("pi_username");
-    if (storedUser) {
-      setUsername(storedUser);
-    } else {
-      authenticate();
-    }
+    if (storedUser) setUsername(storedUser);
 
     const storedJournal = localStorage.getItem("pi_journal");
-    if (storedJournal) {
-      setActivities(JSON.parse(storedJournal));
-    }
+    if (storedJournal) setActivities(JSON.parse(storedJournal));
   }, []);
 
-  /* ---------- PI AUTH ---------- */
+  /* ---------- PI AUTH (USER ACTION) ---------- */
   async function authenticate() {
     if (!window.Pi) return;
 
@@ -46,7 +87,7 @@ export default function App() {
     }
   }
 
-  /* ---------- SAVE ---------- */
+  /* ---------- SAVE ACTIVITY ---------- */
   function saveActivity() {
     if (!title || !category) return;
 
@@ -66,6 +107,8 @@ export default function App() {
     setNotes("");
   }
 
+  const timeline = buildNarrativeTimeline(activities);
+
   return (
     <main className="container">
       {/* HEADER */}
@@ -81,12 +124,13 @@ export default function App() {
         </div>
 
         <div className="quick-links">
+          <button onClick={authenticate}>Refresh identity</button>
           <button onClick={() => setShowPrivacy(true)}>Privacy</button>
           <button onClick={() => setShowTerms(true)}>Terms</button>
         </div>
       </section>
 
-      {/* PROMPT */}
+      {/* DAILY PROMPT */}
       <section className="card">
         <small className="label">Today’s prompt</small>
         <p className="prompt">
@@ -94,13 +138,12 @@ export default function App() {
         </p>
       </section>
 
-      {/* WHY */}
-      <section className="card">
-        <h2>Why keep a Pi journal?</h2>
-        <p>
-          Small actions matter. Capturing your activity helps you reflect,
-          learn, and build a personal Pi history over time.
-        </p>
+      {/* NARRATIVE TIMELINE */}
+      <section className="card soft">
+        <h2>Your Pi timeline</h2>
+        {timeline.map((line, i) => (
+          <p key={i}>{line}</p>
+        ))}
       </section>
 
       {/* CAPTURE */}
@@ -143,8 +186,8 @@ export default function App() {
 
         {activities.length === 0 ? (
           <p className="empty">
-            Nothing here yet — and that’s okay. Capture one small Pi activity
-            today.
+            Nothing here yet — and that’s okay.
+            Capture one small Pi activity today.
           </p>
         ) : (
           activities.map((a, i) => (
@@ -162,8 +205,9 @@ export default function App() {
         <div className="modal">
           <h3>Privacy Policy</h3>
           <p>
-            This app uses Pi authentication only to identify you. All data is
-            stored locally on your device. No tracking, no sharing.
+            This app uses Pi authentication only to identify you.
+            All data is stored locally on your device.
+            No tracking. No sharing.
           </p>
           <button onClick={() => setShowPrivacy(false)}>Close</button>
         </div>
@@ -174,8 +218,8 @@ export default function App() {
         <div className="modal">
           <h3>Terms of Service</h3>
           <p>
-            Profile Pi Card is a personal journaling tool. It does not process
-            payments, transfers, or settlements.
+            Profile Pi Card is a personal journaling tool.
+            It does not process payments, transfers, or settlements.
           </p>
           <button onClick={() => setShowTerms(false)}>Close</button>
         </div>
