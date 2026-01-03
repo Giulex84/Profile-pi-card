@@ -11,41 +11,36 @@ function buildNarrativeTimeline(activities: Activity[]): string[] {
   if (activities.length === 0) {
     return [
       "Your Pi journey hasn’t been recorded yet.",
-      "Small actions matter. Start by capturing one activity."
+      "Start by capturing one small Pi-related activity."
     ];
   }
 
   const days = new Set(
     activities.map(a => new Date(a.date).toDateString())
   );
-
   const categories = new Set(
     activities.map(a => a.category)
   );
 
-  const timeline: string[] = [];
+  const lines: string[] = [];
 
-  timeline.push(
+  lines.push(
     `You’ve been active on ${days.size} different day${
       days.size > 1 ? "s" : ""
     } inside the Pi ecosystem.`
   );
 
-  if (categories.size > 1) {
-    timeline.push(
-      `Your activity spans ${categories.size} different areas of Pi.`
-    );
-  } else {
-    timeline.push(
-      `You’ve focused consistently on one area of Pi so far.`
-    );
-  }
+  lines.push(
+    categories.size > 1
+      ? `Your activities span ${categories.size} different areas of Pi.`
+      : "You’ve focused consistently on one area of Pi so far."
+  );
 
-  timeline.push(
+  lines.push(
     "This timeline reflects your personal interaction with Pi."
   );
 
-  return timeline;
+  return lines;
 }
 
 export default function App() {
@@ -60,18 +55,14 @@ export default function App() {
   /* ---------- INIT ---------- */
   useEffect(() => {
     const storedUser = localStorage.getItem("pi_username");
-    if (storedUser) {
-      setUsername(storedUser);
-    }
+    if (storedUser) setUsername(storedUser);
 
     const storedJournal = localStorage.getItem("pi_journal");
-    if (storedJournal) {
-      setActivities(JSON.parse(storedJournal));
-    }
+    if (storedJournal) setActivities(JSON.parse(storedJournal));
   }, []);
 
-  /* ---------- PI AUTH (ONLY IF NOT AUTHENTICATED) ---------- */
-  async function authenticateIfNeeded() {
+  /* ---------- PI AUTH (USER ACTION ONLY) ---------- */
+  async function authenticate() {
     if (username) return;
     if (!window.Pi) return;
 
@@ -82,7 +73,7 @@ export default function App() {
         localStorage.setItem("pi_username", auth.user.username);
       }
     } catch {
-      // Do nothing: never overwrite a valid identity
+      // Do nothing: never overwrite identity
     }
   }
 
@@ -110,7 +101,7 @@ export default function App() {
 
   return (
     <main className="container">
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <section className="card hero">
         <h1>Profile Pi Card</h1>
         <p className="subtitle">
@@ -123,7 +114,7 @@ export default function App() {
         </div>
 
         {!username && (
-          <button onClick={authenticateIfNeeded}>
+          <button className="primary" onClick={authenticate}>
             Connect with Pi
           </button>
         )}
@@ -134,9 +125,21 @@ export default function App() {
         </div>
       </section>
 
-      {/* DAILY PROMPT */}
+      {/* ================= VALUE PROPOSITION ================= */}
       {username && (
         <section className="card">
+          <h2>Why Profile Pi Card exists</h2>
+          <p>
+            Pi is built through small, everyday actions.
+            This journal helps you notice, remember, and reflect on how you
+            explore the Pi ecosystem — privately, at your own pace.
+          </p>
+        </section>
+      )}
+
+      {/* ================= DAILY PROMPT ================= */}
+      {username && (
+        <section className="card soft">
           <small className="label">Today’s prompt</small>
           <p className="prompt">
             Did you interact with a Pi app, feature, or community today?
@@ -144,7 +147,7 @@ export default function App() {
         </section>
       )}
 
-      {/* NARRATIVE TIMELINE */}
+      {/* ================= NARRATIVE TIMELINE ================= */}
       {username && (
         <section className="card soft">
           <h2>Your Pi timeline</h2>
@@ -154,7 +157,7 @@ export default function App() {
         </section>
       )}
 
-      {/* CAPTURE */}
+      {/* ================= CAPTURE ================= */}
       {username && (
         <section className="card">
           <h2>Capture activity</h2>
@@ -193,7 +196,7 @@ export default function App() {
         </section>
       )}
 
-      {/* JOURNAL */}
+      {/* ================= JOURNAL ================= */}
       {username && (
         <section className="card">
           <h2>Your journal</h2>
@@ -215,26 +218,26 @@ export default function App() {
         </section>
       )}
 
-      {/* PRIVACY */}
+      {/* ================= PRIVACY ================= */}
       {showPrivacy && (
         <div className="modal">
           <h3>Privacy Policy</h3>
           <p>
-            This app uses Pi authentication only to identify you.
-            All data is stored locally on your device.
-            No tracking. No sharing.
+            Profile Pi Card uses Pi authentication only to identify the user.
+            All journal entries are stored locally on the device.
+            No data is shared or transmitted.
           </p>
           <button onClick={() => setShowPrivacy(false)}>Close</button>
         </div>
       )}
 
-      {/* TERMS */}
+      {/* ================= TERMS ================= */}
       {showTerms && (
         <div className="modal">
           <h3>Terms of Service</h3>
           <p>
-            Profile Pi Card is a personal journaling tool.
-            It does not process payments, transfers, or settlements.
+            Profile Pi Card is a personal journaling utility.
+            It does not process payments, transfers, or rewards.
           </p>
           <button onClick={() => setShowTerms(false)}>Close</button>
         </div>
