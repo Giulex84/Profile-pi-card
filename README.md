@@ -1,68 +1,84 @@
 # Profile Pi Card
 
-Profile Pi Card is a **private, identity-gated journaling utility** built for the Pi Network.
+Profile Pi Card is a **private, identity-gated journaling utility** designed specifically for Pi Network users.
 
-It allows Pi users to record and reflect on their personal activities within the Pi ecosystem in a simple, private, and local-first way.
+It provides a simple, respectful space where users can record and reflect on how they interact with the Pi ecosystem over time.
 
-This app is designed to be:
-- simple
-- intentional
-- privacy-first
-- fully compliant with Pi Network guidelines
+This app is intentionally minimal, privacy-first, and fully compliant with Pi Network guidelines.
 
 ---
 
-## What does this app do?
+## Why this app exists for Pi users
+
+Pi grows through individual exploration, learning, and participation.
+
+Profile Pi Card exists to help Pi users:
+
+- build awareness of their personal Pi activity
+- reflect on how they use Pi apps, features, and community tools
+- create a private record of their journey inside the Pi ecosystem
+
+The app focuses on **personal clarity**, not social exposure.
+
+---
+
+## What users can do
 
 After authenticating with Pi, users can:
-- record personal Pi-related activities
-- categorize them for personal reference
-- add optional notes
-- view their activity history over time
 
-All data is stored **locally on the user’s device**.
+- log Pi-related activities (usage, learning, exploration, contribution)
+- add optional personal notes
+- review their activity history over time
+- see a narrative timeline generated from their own actions
+
+All data remains local to the user’s device.
 
 ---
 
 ## What this app does NOT do
 
-- No social features
 - No public profiles
+- No social feeds
 - No content sharing
-- No payments or rewards
-- No data synchronization
+- No payments or transfers
+- No rewards or gamification
 - No analytics or tracking
+- No cloud storage
 
-Profile Pi Card is intentionally minimal.
+Profile Pi Card is intentionally scoped to avoid unnecessary complexity.
 
 ---
 
 ## Authentication
 
 The app uses **Pi Authentication** only to identify the user.
-Only the Pi username is accessed.
 
-Authentication is triggered **explicitly by user action**.
+- Authentication is triggered explicitly by user action
+- Only the Pi username is accessed
+- No authentication data is stored remotely
 
 ---
 
-## Data Storage
+## Data storage & privacy
 
-- All journal entries are stored locally using browser storage.
-- No data is transmitted to external servers.
-- Users remain fully in control of their data.
+- All journal entries are stored locally on the user’s device
+- No data is transmitted to external servers
+- Users retain full control over their data
+
+See `PRIVACY.md` for details.
 
 ---
 
 ## Platform
 
 - Works exclusively inside **Pi Browser**
-- Built with React + Vite
+- Built with React, Vite, and TypeScript
 - Deployed on Vercel
 
 ---
 
-## Status
+## Status & future direction
 
-This app is in active development.
-Future updates may introduce optional features after Pi Network approval.
+This is an initial version focused on clarity and reliability.
+
+Future updates may introduce optional insights or export features after Pi Network approval, while maintaining the app’s privacy-first approach.
