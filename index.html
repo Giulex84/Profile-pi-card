@@ -36,8 +36,11 @@
     <div id="app"></div>
 
     <script>
-      // 🔐 AUTH SCOPES (OBBLIGATORI)
+      // 🔐 SCOPES OBBLIGATORI
       const scopes = ["username", "payments"];
+
+      // 🌐 URL ASSOLUTO BACKEND (OBBLIGATORIO PER PI BROWSER)
+      const API_URL = "https://identity-cfw.pages.dev/api/pi";
 
       document.getElementById("login").onclick = async () => {
         try {
@@ -60,7 +63,7 @@
         }
       };
 
-      // 💰 PAYMENT FLOW
+      // 💰 PAYMENT FLOW COMPLETO
       async function startPayment() {
         const status = document.getElementById("status");
         status.textContent = "Creating payment...";
@@ -73,8 +76,10 @@
               metadata: { test: true },
             },
             {
+              // ✅ STEP 1 — APPROVE
               onReadyForServerApproval: async (paymentId) => {
-                await fetch("/api/pi", {
+                console.log("APPROVE", paymentId);
+                await fetch(API_URL, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -84,8 +89,10 @@
                 });
               },
 
+              // ✅ STEP 2 — COMPLETE
               onReadyForServerCompletion: async (paymentId) => {
-                await fetch("/api/pi", {
+                console.log("COMPLETE", paymentId);
+                await fetch(API_URL, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -98,8 +105,10 @@
                   '<span class="ok">Payment completed successfully</span>';
               },
 
+              // ❌ CANCEL
               onCancel: async (paymentId) => {
-                await fetch("/api/pi", {
+                console.log("CANCEL", paymentId);
+                await fetch(API_URL, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -112,6 +121,7 @@
                   '<span class="error">Payment cancelled</span>';
               },
 
+              // ❌ ERROR
               onError: (err) => {
                 console.error("PAYMENT ERROR", err);
                 status.innerHTML =
