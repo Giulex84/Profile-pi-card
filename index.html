@@ -1,28 +1,64 @@
-<button id="pay">Test Payment (0.01 Pi)</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Profile Pi Card</title>
 
-<script>
-document.getElementById("pay").onclick = async () => {
-  const payment = await Pi.createPayment({
-    amount: 0.01,
-    memo: "Test payment Profile Pi Card",
-    metadata: { test: true },
-    onReadyForServerApproval: async (paymentId) => {
-      await fetch("/api/pi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, action: "approve" })
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <script>
+    Pi.init({ version: "2.0" });
+  </script>
+</head>
+
+<body>
+  <button id="login">Login with Pi</button>
+  <div id="app"></div>
+
+  <script>
+    const scopes = ["username", "payments"];
+
+    document.getElementById("login").onclick = async () => {
+      try {
+        const auth = await Pi.authenticate(scopes, () => {});
+        document.getElementById("app").innerHTML = `
+          <h3>Welcome ${auth.user.username}</h3>
+          <button id="pay">Test Payment (0.01 Pi)</button>
+        `;
+
+        document.getElementById("pay").onclick = startPayment;
+      } catch (e) {
+        alert("Authentication failed");
+        console.error(e);
+      }
+    };
+
+    function startPayment() {
+      Pi.createPayment({
+        amount: 0.01,
+        memo: "Test payment Profile Pi Card",
+        metadata: { test: true },
+
+        onReadyForServerApproval: async (paymentId) => {
+          await fetch("/api/pi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, action: "approve" }),
+          });
+        },
+
+        onReadyForServerCompletion: async (paymentId) => {
+          await fetch("/api/pi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, action: "complete" }),
+          });
+          alert("Payment completed successfully");
+        },
+
+        onCancel: () => alert("Payment cancelled"),
+        onError: (err) => console.error(err),
       });
-    },
-    onReadyForServerCompletion: async (paymentId) => {
-      await fetch("/api/pi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, action: "complete" })
-      });
-      alert("Payment completed successfully");
-    },
-    onCancel: () => alert("Payment cancelled"),
-    onError: (err) => console.error(err),
-  });
-};
-</script>
+    }
+  </script>
+</body>
+</html>
