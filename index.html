@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Identity Pi Card</title>
+    <title>Identity</title>
 
     <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
@@ -36,12 +36,13 @@
     <div id="app"></div>
 
     <script>
-      // 🔐 SCOPES OBBLIGATORI
+      // 🔐 SCOPES NECESSARI PER AUTH + PAGAMENTI
       const scopes = ["username", "payments"];
 
-      // 🌐 URL ASSOLUTO BACKEND (OBBLIGATORIO PER PI BROWSER)
+      // 🌐 URL ASSOLUTO DEL BACKEND DI QUESTA APP
       const API_URL = "https://identity-cfw.pages.dev/api/pi";
 
+      // -------- AUTH --------
       document.getElementById("login").onclick = async () => {
         try {
           const auth = await Pi.authenticate(scopes, (payment) => {
@@ -63,7 +64,7 @@
         }
       };
 
-      // 💰 PAYMENT FLOW COMPLETO
+      // -------- PAYMENT FLOW COMPLETO --------
       async function startPayment() {
         const status = document.getElementById("status");
         status.textContent = "Creating payment...";
@@ -72,11 +73,11 @@
           await Pi.createPayment(
             {
               amount: 0.01,
-              memo: "Identity Pi Card test payment",
+              memo: "Identity test payment",
               metadata: { test: true },
             },
             {
-              // ✅ STEP 1 — APPROVE
+              // ✅ STEP 1 — APPROVE (backend)
               onReadyForServerApproval: async (paymentId) => {
                 console.log("APPROVE", paymentId);
                 await fetch(API_URL, {
@@ -89,7 +90,7 @@
                 });
               },
 
-              // ✅ STEP 2 — COMPLETE
+              // ✅ STEP 2 — COMPLETE (backend)
               onReadyForServerCompletion: async (paymentId) => {
                 console.log("COMPLETE", paymentId);
                 await fetch(API_URL, {
@@ -105,7 +106,7 @@
                   '<span class="ok">Payment completed successfully</span>';
               },
 
-              // ❌ CANCEL
+              // ❌ CANCEL (utente annulla nel wallet)
               onCancel: async (paymentId) => {
                 console.log("CANCEL", paymentId);
                 await fetch(API_URL, {
@@ -121,7 +122,7 @@
                   '<span class="error">Payment cancelled</span>';
               },
 
-              // ❌ ERROR
+              // ❌ ERROR (errore nel wallet)
               onError: (err) => {
                 console.error("PAYMENT ERROR", err);
                 status.innerHTML =
