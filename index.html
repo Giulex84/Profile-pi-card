@@ -4,84 +4,93 @@
   <meta charset="UTF-8" />
   <title>Profile Pi Card</title>
 
-  <!-- Pi SDK -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <script>
     Pi.init({ version: "2.0" });
   </script>
+
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 10px 16px; font-size: 16px; }
+  </style>
 </head>
 
 <body>
-  <button id="login">Login with Pi</button>
 
+  <button id="login">Login with Pi</button>
   <div id="app"></div>
 
   <script>
     const scopes = ["username", "payments"];
+    let paymentInProgress = false;
 
-    const loginBtn = document.getElementById("login");
-    const appDiv = document.getElementById("app");
-
-    loginBtn.onclick = async () => {
+    document.getElementById("login").onclick = async () => {
       try {
         const auth = await Pi.authenticate(scopes, () => {});
-        const username = auth.user.username;
-
-        appDiv.innerHTML = `
-          <h2>Welcome ${username}</h2>
-          <button id="pay">PAY TEST (0.01 Pi)</button>
+        document.getElementById("app").innerHTML = `
+          <h2>Welcome ${auth.user.username}</h2>
+          <button id="pay">Pay Test (0.01 Pi)</button>
+          <div id="status"></div>
         `;
-
         document.getElementById("pay").onclick = startPayment;
-      } catch (err) {
-        console.error(err);
+      } catch (e) {
         alert("Authentication failed");
+        console.error(e);
       }
     };
 
-    function startPayment() {
-      Pi.createPayment(
-        {
-          amount: 0.01,
-          memo: "Test payment Profile Pi Card",
-          metadata: { test: true },
+    async function startPayment() {
+      if (paymentInProgress) {
+        alert("Payment already in progress");
+        return;
+      }
+
+      paymentInProgress = true;
+      document.getElementById("pay").disabled = true;
+      document.getElementById("status").innerText = "Opening Pi Wallet…";
+
+      Pi.createPayment({
+        amount: 0.01,
+        memo: "Test payment Profile Pi Card",
+        metadata: { test: true },
+
+        onReadyForServerApproval: async (paymentId) => {
+          await fetch("/api/pi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, action: "approve" })
+          });
         },
-        {
-          onReadyForServerApproval: async (paymentId) => {
-            await fetch("/api/pi", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                paymentId,
-                action: "approve",
-              }),
-            });
-          },
 
-          onReadyForServerCompletion: async (paymentId) => {
-            await fetch("/api/pi", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                paymentId,
-                action: "complete",
-              }),
-            });
+        onReadyForServerCompletion: async (paymentId) => {
+          await fetch("/api/pi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, action: "complete" })
+          });
 
-            alert("✅ Payment completed successfully");
-          },
+          document.getElementById("status").innerText =
+            "✅ Payment completed successfully";
+          paymentInProgress = false;
+        },
 
-          onCancel: () => {
-            alert("❌ Payment cancelled");
-          },
+        onCancel: () => {
+          document.getElementById("status").innerText =
+            "❌ Payment cancelled";
+          paymentInProgress = false;
+          document.getElementById("pay").disabled = false;
+        },
 
-          onError: (error) => {
-            console.error(error);
-            alert("⚠️ Payment error");
-          },
+        onError: (err) => {
+          console.error(err);
+          document.getElementById("status").innerText =
+            "⚠️ Payment error";
+          paymentInProgress = false;
+          document.getElementById("pay").disabled = false;
         }
-      );
+      });
     }
   </script>
+
 </body>
 </html>
