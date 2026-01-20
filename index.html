@@ -36,14 +36,16 @@
     <div id="app"></div>
 
     <script>
-      // ---------- AUTH ----------
-      const authScopes = ["username"];
+      // 🔐 AUTH SCOPES (OBBLIGATORI)
+      const scopes = ["username", "payments"];
 
       document.getElementById("login").onclick = async () => {
         try {
-          const auth = await Pi.authenticate(authScopes, (payment) => {
-            console.log("Incomplete payment from auth callback", payment);
+          const auth = await Pi.authenticate(scopes, (payment) => {
+            console.log("Incomplete payment callback", payment);
           });
+
+          console.log("AUTH SUCCESS", auth);
 
           document.getElementById("app").innerHTML = `
             <h2>Welcome ${auth.user.username}</h2>
@@ -58,7 +60,7 @@
         }
       };
 
-      // ---------- PAYMENT ----------
+      // 💰 PAYMENT FLOW
       async function startPayment() {
         const status = document.getElementById("status");
         status.textContent = "Creating payment...";
@@ -93,7 +95,7 @@
                 });
 
                 status.innerHTML =
-                  "<span class='ok'>Payment completed successfully</span>";
+                  '<span class="ok">Payment completed successfully</span>';
               },
 
               onCancel: async (paymentId) => {
@@ -107,20 +109,20 @@
                 });
 
                 status.innerHTML =
-                  "<span class='error'>Payment cancelled</span>";
+                  '<span class="error">Payment cancelled</span>';
               },
 
               onError: (err) => {
                 console.error("PAYMENT ERROR", err);
                 status.innerHTML =
-                  "<span class='error'>Payment error</span>";
+                  '<span class="error">Payment error</span>';
               },
             }
           );
         } catch (err) {
           console.error("UNEXPECTED ERROR", err);
           status.innerHTML =
-            "<span class='error'>Unexpected error</span>";
+            '<span class="error">Unexpected error</span>';
         }
       }
     </script>
