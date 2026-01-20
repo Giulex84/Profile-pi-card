@@ -13,165 +13,150 @@
 
   <style>
     body {
+      margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f172a;
+      background: linear-gradient(135deg, #020617, #0f172a);
       color: #e5e7eb;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       padding: 24px;
-      max-width: 720px;
-      margin: auto;
-    }
-
-    h1 {
-      font-size: 28px;
-      margin-bottom: 8px;
-    }
-
-    p {
-      color: #cbd5f5;
-      line-height: 1.6;
     }
 
     .card {
-      background: #020617;
-      border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 20px;
-      margin-top: 24px;
+      max-width: 420px;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+    }
+
+    p {
+      line-height: 1.6;
+      opacity: 0.9;
     }
 
     button {
-      background: #6366f1;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
       border: none;
-      border-radius: 8px;
-      padding: 12px 18px;
       font-size: 16px;
+      background: #6366f1;
       color: white;
       cursor: pointer;
-      margin-top: 12px;
+      margin-top: 20px;
     }
 
-    button:disabled {
-      background: #334155;
-      cursor: not-allowed;
+    button:hover {
+      background: #4f46e5;
     }
 
-    .status {
+    .identity {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #22c55e;
+      color: #022c22;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .future {
+      margin-top: 20px;
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+    .error {
       margin-top: 16px;
-      font-weight: 500;
+      color: #ef4444;
     }
-
-    .ok { color: #22c55e; }
-    .err { color: #ef4444; }
-    .muted { color: #94a3b8; }
   </style>
 </head>
 
 <body>
-  <h1>Identity Card</h1>
-  <p>
-    Identity Card is a Pi Network dApp that lets users authenticate securely
-    and unlock premium identity features through Pi payments.
-  </p>
-
-  <div class="card" id="auth-card">
-    <p class="muted">Step 1 — Authenticate with Pi</p>
-    <button id="login-btn">Login with Pi</button>
-  </div>
-
-  <div class="card" id="app-card" style="display:none">
-    <p id="welcome"></p>
-    <p class="muted">
-      Step 2 — Activate your Identity Card by completing a Pi payment.
+  <div class="card" id="app">
+    <h1>Identity Card</h1>
+    <p>
+      Build your Pi Network digital identity.  
+      Discover your reputation preview and unlock future features.
     </p>
-    <button id="pay-btn">Activate Identity Card (0.01 Pi)</button>
-    <div class="status" id="status"></div>
+
+    <button id="login">Create my Identity Card</button>
   </div>
 
   <script>
-    const SCOPES = ["username", "payments"];
-    const API_URL = "https://identitycard.pages.dev/api/pi";
+    const scopes = ["username"];
 
-    let paymentInProgress = false;
-
-    const loginBtn = document.getElementById("login-btn");
-    const payBtn = document.getElementById("pay-btn");
-    const statusEl = document.getElementById("status");
-
-    loginBtn.onclick = async () => {
+    document.getElementById("login").onclick = async () => {
       try {
-        const auth = await Pi.authenticate(SCOPES, () => {});
-        document.getElementById("auth-card").style.display = "none";
-        document.getElementById("app-card").style.display = "block";
-        document.getElementById("welcome").textContent =
-          `Welcome ${auth.user.username}.`;
-      } catch {
-        alert("Pi authentication failed.");
-      }
-    };
+        const auth = await Pi.authenticate(scopes, (payment) => {
+          // Required by SDK – no payments used
+          console.log("Incomplete payment callback", payment);
+        });
 
-    payBtn.onclick = async () => {
-      if (paymentInProgress) return;
+        const username = auth.user.username;
 
-      paymentInProgress = true;
-      payBtn.disabled = true;
-      statusEl.textContent = "Waiting for Pi Wallet confirmation…";
-      statusEl.className = "status muted";
+        // Simulated reputation logic (clearly preview-only)
+        const reputation = Math.floor(Math.random() * 40) + 60;
+        const pioneerLevel =
+          reputation > 85 ? "Elite Pioneer" :
+          reputation > 70 ? "Trusted Pioneer" :
+          "Active Pioneer";
 
-      try {
-        await Pi.createPayment(
-          {
-            amount: 0.01,
-            memo: "Identity Card activation",
-            metadata: { feature: "identity-card" }
-          },
-          {
-            onReadyForServerApproval: async (paymentId) => {
-              await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId, action: "approve" })
-              });
-            },
+        document.getElementById("app").innerHTML = `
+          <h1>Your Identity Card</h1>
 
-            onReadyForServerCompletion: async (paymentId) => {
-              await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId, action: "complete" })
-              });
+          <div class="identity">
+            <div class="row">
+              <strong>Username</strong>
+              <span>${username}</span>
+            </div>
 
-              statusEl.textContent =
-                "Identity Card activated successfully.";
-              statusEl.className = "status ok";
-            },
+            <div class="row">
+              <strong>Reputation Score</strong>
+              <span>${reputation}/100</span>
+            </div>
 
-            onCancel: async (paymentId) => {
-              paymentInProgress = false;
-              payBtn.disabled = false;
+            <div class="row">
+              <strong>Status</strong>
+              <span class="badge">${pioneerLevel}</span>
+            </div>
+          </div>
 
-              await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId, action: "cancel" })
-              });
+          <div class="future">
+            🔒 Coming soon: verified badges, on-chain reputation,
+            premium identity tools, and ecosystem integrations.
+          </div>
+        `;
 
-              statusEl.textContent = "Payment cancelled.";
-              statusEl.className = "status err";
-            },
-
-            onError: () => {
-              paymentInProgress = false;
-              payBtn.disabled = false;
-              statusEl.textContent = "Payment error.";
-              statusEl.className = "status err";
-            }
-          }
-        );
-      } catch {
-        paymentInProgress = false;
-        payBtn.disabled = false;
-        statusEl.textContent = "Unexpected error.";
-        statusEl.className = "status err";
+        console.log("AUTH SUCCESS", auth);
+      } catch (err) {
+        console.error("AUTH ERROR", err);
+        document.getElementById("app").innerHTML += `
+          <div class="error">Authentication failed. Please try again.</div>
+        `;
       }
     };
   </script>
