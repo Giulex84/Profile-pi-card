@@ -1,125 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Identity Pi Card</title>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Identity Pi Card</title>
 
-  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-  <script>
-    Pi.init({ version: "2.0" });
-  </script>
+    <!-- Pi SDK -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <script>
+      Pi.init({ version: "2.0" });
+    </script>
 
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-      margin-top: 10px;
-    }
-    #status {
-      margin-top: 15px;
-      font-weight: bold;
-    }
-    .ok { color: green; }
-    .error { color: red; }
-  </style>
-</head>
-
-<body>
-
-  <button id="login">Login with Pi</button>
-  <div id="app"></div>
-
-  <script>
-    const scopes = ["username", "payments"];
-    let paymentInProgress = false;
-
-    document.getElementById("login").onclick = async () => {
-      try {
-        const auth = await Pi.authenticate(scopes, () => {});
-        document.getElementById("app").innerHTML = `
-          <h2>Welcome ${auth.user.username}</h2>
-          <button id="pay">PAY TEST (0.01 Pi)</button>
-          <div id="status"></div>
-        `;
-        document.getElementById("pay").onclick = startPayment;
-      } catch (err) {
-        alert("Authentication failed");
-        console.error(err);
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 24px;
       }
-    };
-
-    async function startPayment() {
-      if (paymentInProgress) return;
-
-      paymentInProgress = true;
-      document.getElementById("status").textContent = "Creating payment...";
-
-      try {
-        await Pi.createPayment({
-          amount: 0.01,
-          memo: "Identity Pi Card - Test Payment",
-          metadata: { app: "identity-pi-card", test: true },
-
-          onReadyForServerApproval: async (paymentId) => {
-            await fetch("/api/pi", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                paymentId,
-                action: "approve"
-              })
-            });
-          },
-
-          onReadyForServerCompletion: async (paymentId) => {
-            await fetch("/api/pi", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                paymentId,
-                action: "complete"
-              })
-            });
-
-            document.getElementById("status").innerHTML =
-              '<span class="ok">Payment completed successfully</span>';
-            paymentInProgress = false;
-          },
-
-          onCancel: async (paymentId) => {
-            await fetch("/api/pi", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                paymentId,
-                action: "cancel"
-              })
-            });
-
-            document.getElementById("status").innerHTML =
-              '<span class="error">Payment cancelled</span>';
-            paymentInProgress = false;
-          },
-
-          onError: (err) => {
-            console.error(err);
-            document.getElementById("status").innerHTML =
-              '<span class="error">Payment error</span>';
-            paymentInProgress = false;
-          }
-        });
-      } catch (err) {
-        console.error(err);
-        document.getElementById("status").innerHTML =
-          '<span class="error">Unexpected error</span>';
-        paymentInProgress = false;
+      button {
+        padding: 12px 18px;
+        font-size: 16px;
+        cursor: pointer;
       }
-    }
-  </script>
+    </style>
+  </head>
 
-</body>
+  <body>
+    <h1>Identity Pi Card</h1>
+
+    <button id="login">Login with Pi</button>
+
+    <script>
+      // ✅ SCOPES MINIMI (BASELINE)
+      const scopes = ["username"];
+
+      // ✅ CALLBACK OBBLIGATORIA (anche se vuota)
+      function onIncompletePayment(payment) {
+        console.log("Incomplete payment", payment);
+      }
+
+      // ✅ AUTH SOLO SU CLICK UTENTE
+      document.getElementById("login").onclick = async () => {
+        try {
+          const auth = await Pi.authenticate(
+            scopes,
+            onIncompletePayment
+          );
+
+          console.log("AUTH SUCCESS", auth);
+
+          // UI semplice post-auth
+          document.body.innerHTML = `
+            <h1>Identity Pi Card</h1>
+            <h2>Welcome ${auth.user.username}</h2>
+            <p>User authenticated correctly.</p>
+          `;
+        } catch (err) {
+          console.error("AUTH ERROR", err);
+          alert("Authentication failed");
+        }
+      };
+    </script>
+  </body>
 </html>
