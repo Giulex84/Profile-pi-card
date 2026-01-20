@@ -24,8 +24,8 @@
       padding: 24px;
     }
 
-    .card {
-      max-width: 420px;
+    .app {
+      max-width: 460px;
       width: 100%;
       background: rgba(255,255,255,0.04);
       border-radius: 20px;
@@ -52,18 +52,18 @@
       background: #6366f1;
       color: white;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: 16px;
     }
 
     button:hover {
       background: #4f46e5;
     }
 
-    .identity {
-      margin-top: 24px;
+    .card {
+      margin-top: 20px;
       padding: 20px;
       border-radius: 14px;
-      background: rgba(0,0,0,0.3);
+      background: rgba(0,0,0,0.35);
     }
 
     .row {
@@ -74,7 +74,7 @@
 
     .badge {
       display: inline-block;
-      padding: 6px 10px;
+      padding: 6px 12px;
       border-radius: 999px;
       background: #22c55e;
       color: #022c22;
@@ -82,28 +82,53 @@
       font-weight: 600;
     }
 
-    .future {
-      margin-top: 20px;
-      font-size: 14px;
-      opacity: 0.7;
+    .progress {
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 10px;
+      margin-top: 6px;
     }
 
-    .error {
-      margin-top: 16px;
-      color: #ef4444;
+    .progress > div {
+      height: 100%;
+      background: #22c55e;
+    }
+
+    .muted {
+      font-size: 14px;
+      opacity: 0.7;
+      margin-top: 12px;
+    }
+
+    .links {
+      margin-top: 24px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .links a {
+      color: #93c5fd;
+      text-decoration: none;
+      margin-right: 12px;
     }
   </style>
 </head>
 
 <body>
-  <div class="card" id="app">
+  <div class="app" id="app">
     <h1>Identity Card</h1>
     <p>
-      Build your Pi Network digital identity.  
-      Discover your reputation preview and unlock future features.
+      Identity Card helps Pi users build a digital reputation layer
+      for future ecosystem access and trust.
     </p>
 
     <button id="login">Create my Identity Card</button>
+
+    <div class="links">
+      <a href="#privacy">Privacy Policy</a>
+      <a href="#terms">Terms of Service</a>
+    </div>
   </div>
 
   <script>
@@ -111,54 +136,79 @@
 
     document.getElementById("login").onclick = async () => {
       try {
-        const auth = await Pi.authenticate(scopes, (payment) => {
-          // Required by SDK – no payments used
-          console.log("Incomplete payment callback", payment);
-        });
-
+        const auth = await Pi.authenticate(scopes, () => {});
         const username = auth.user.username;
 
-        // Simulated reputation logic (clearly preview-only)
-        const reputation = Math.floor(Math.random() * 40) + 60;
-        const pioneerLevel =
-          reputation > 85 ? "Elite Pioneer" :
-          reputation > 70 ? "Trusted Pioneer" :
-          "Active Pioneer";
+        let reputation = parseInt(localStorage.getItem("rep")) || (Math.floor(Math.random() * 30) + 60);
+        let lastCheck = localStorage.getItem("checkin");
+
+        localStorage.setItem("rep", reputation);
 
         document.getElementById("app").innerHTML = `
           <h1>Your Identity Card</h1>
 
-          <div class="identity">
-            <div class="row">
-              <strong>Username</strong>
-              <span>${username}</span>
-            </div>
+          <div class="card">
+            <div class="row"><strong>Username</strong><span>${username}</span></div>
+            <div class="row"><strong>Reputation</strong><span>${reputation}/100</span></div>
+            <div class="row"><strong>Status</strong><span class="badge">${reputation > 85 ? "Elite Pioneer" : "Trusted Pioneer"}</span></div>
 
-            <div class="row">
-              <strong>Reputation Score</strong>
-              <span>${reputation}/100</span>
-            </div>
-
-            <div class="row">
-              <strong>Status</strong>
-              <span class="badge">${pioneerLevel}</span>
+            <div class="progress">
+              <div style="width:${reputation}%"></div>
             </div>
           </div>
 
-          <div class="future">
-            🔒 Coming soon: verified badges, on-chain reputation,
-            premium identity tools, and ecosystem integrations.
+          <button id="checkin">Daily Identity Check-in</button>
+          <div class="muted" id="checkinStatus"></div>
+
+          <div class="card muted">
+            🔒 Coming soon: verified badges, ecosystem access,
+            trusted integrations and premium identity tools.
+          </div>
+
+          <div class="links">
+            <a href="#privacy">Privacy Policy</a>
+            <a href="#terms">Terms of Service</a>
           </div>
         `;
 
-        console.log("AUTH SUCCESS", auth);
-      } catch (err) {
-        console.error("AUTH ERROR", err);
-        document.getElementById("app").innerHTML += `
-          <div class="error">Authentication failed. Please try again.</div>
-        `;
+        document.getElementById("checkin").onclick = () => {
+          const today = new Date().toDateString();
+          if (lastCheck === today) {
+            document.getElementById("checkinStatus").innerText =
+              "You already checked in today.";
+            return;
+          }
+
+          reputation = Math.min(100, reputation + 1);
+          localStorage.setItem("rep", reputation);
+          localStorage.setItem("checkin", today);
+          location.reload();
+        };
+
+      } catch {
+        alert("Authentication failed.");
       }
     };
   </script>
+
+  <!-- PRIVACY -->
+  <div id="privacy" style="display:none">
+    <h2>Privacy Policy</h2>
+    <p>
+      Identity Card does not collect, store or transmit personal data.
+      Authentication is handled exclusively by Pi Network.
+      No data is shared with third parties.
+    </p>
+  </div>
+
+  <!-- TERMS -->
+  <div id="terms" style="display:none">
+    <h2>Terms of Service</h2>
+    <p>
+      Identity Card provides a preview of digital reputation features.
+      All displayed scores and badges are informational and non-binding.
+      The service is provided “as is” without guarantees.
+    </p>
+  </div>
 </body>
 </html>
