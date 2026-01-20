@@ -22,9 +22,11 @@
       }
       .error {
         color: red;
+        margin-top: 10px;
       }
       .ok {
         color: green;
+        margin-top: 10px;
       }
     </style>
   </head>
@@ -34,23 +36,19 @@
     <div id="app"></div>
 
     <script>
-      // ⚠️ TUTTI GLI SCOPE VANNO QUI
-      const scopes = ["username", "payments"];
-      let paymentInProgress = false;
+      // ---------- AUTH ----------
+      const authScopes = ["username"];
 
-      // LOGIN
       document.getElementById("login").onclick = async () => {
         try {
-          const auth = await Pi.authenticate(scopes, (payment) => {
-            console.log("Incomplete payment", payment);
+          const auth = await Pi.authenticate(authScopes, (payment) => {
+            console.log("Incomplete payment from auth callback", payment);
           });
-
-          console.log("AUTH SUCCESS", auth);
 
           document.getElementById("app").innerHTML = `
             <h2>Welcome ${auth.user.username}</h2>
             <button id="pay">PAY TEST (0.01 Pi)</button>
-            <p id="status"></p>
+            <div id="status"></div>
           `;
 
           document.getElementById("pay").onclick = startPayment;
@@ -60,82 +58,69 @@
         }
       };
 
-      // PAYMENT
+      // ---------- PAYMENT ----------
       async function startPayment() {
-        if (paymentInProgress) return;
-        paymentInProgress = true;
-
-        document.getElementById("status").textContent =
-          "Opening Pi Wallet...";
+        const status = document.getElementById("status");
+        status.textContent = "Creating payment...";
 
         try {
-          await Pi.createPayment({
-            amount: 0.01,
-            memo: "Identity Pi Card – Test Payment",
-            metadata: { app: "identity-pi-card", env: "test" },
-
-            // 1️⃣ SERVER APPROVAL
-            onReadyForServerApproval: async (paymentId) => {
-              console.log("Approve payment", paymentId);
-              await fetch("/api/pi", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  paymentId,
-                  action: "approve",
-                }),
-              });
+          await Pi.createPayment(
+            {
+              amount: 0.01,
+              memo: "Identity Pi Card test payment",
+              metadata: { test: true },
             },
+            {
+              onReadyForServerApproval: async (paymentId) => {
+                await fetch("/api/pi", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    paymentId,
+                    action: "approve",
+                  }),
+                });
+              },
 
-            // 2️⃣ SERVER COMPLETION
-            onReadyForServerCompletion: async (paymentId) => {
-              console.log("Complete payment", paymentId);
-              await fetch("/api/pi", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  paymentId,
-                  action: "complete",
-                }),
-              });
+              onReadyForServerCompletion: async (paymentId) => {
+                await fetch("/api/pi", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    paymentId,
+                    action: "complete",
+                  }),
+                });
 
-              document.getElementById("status").innerHTML =
-                '<span class="ok">Payment completed successfully</span>';
+                status.innerHTML =
+                  "<span class='ok'>Payment completed successfully</span>";
+              },
 
-              paymentInProgress = false;
-            },
+              onCancel: async (paymentId) => {
+                await fetch("/api/pi", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    paymentId,
+                    action: "cancel",
+                  }),
+                });
 
-            // ❌ USER CANCEL
-            onCancel: async (paymentId) => {
-              console.log("Payment cancelled", paymentId);
-              await fetch("/api/pi", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  paymentId,
-                  action: "cancel",
-                }),
-              });
+                status.innerHTML =
+                  "<span class='error'>Payment cancelled</span>";
+              },
 
-              document.getElementById("status").innerHTML =
-                '<span class="error">Payment cancelled</span>';
-
-              paymentInProgress = false;
-            },
-
-            // ❌ SDK / WALLET ERROR
-            onError: (err) => {
-              console.error("Payment error", err);
-              document.getElementById("status").innerHTML =
-                '<span class="error">Payment error</span>';
-              paymentInProgress = false;
-            },
-          });
+              onError: (err) => {
+                console.error("PAYMENT ERROR", err);
+                status.innerHTML =
+                  "<span class='error'>Payment error</span>";
+              },
+            }
+          );
         } catch (err) {
           console.error("UNEXPECTED ERROR", err);
-          document.getElementById("status").innerHTML =
-            '<span class="error">Unexpected error</span>';
-          paymentInProgress = false;
+          status.innerHTML =
+            "<span class='error'>Unexpected error</span>";
         }
       }
     </script>
