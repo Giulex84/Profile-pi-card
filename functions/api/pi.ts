@@ -1,44 +1,32 @@
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env }: any) {
   try {
-    const body = await request.json();
-    const { paymentId, action } = body;
+    const { paymentId, action } = await request.json();
 
     if (!paymentId || !action) {
-      return new Response(
-        JSON.stringify({ error: "Missing paymentId or action" }),
-        { status: 400 }
-      );
+      return new Response("Bad request", { status: 400 });
     }
-
-    const PI_API_KEY = env.PI_API_KEY;
 
     const res = await fetch(
       `https://api.minepi.com/v2/payments/${paymentId}/${action}`,
       {
         method: "POST",
         headers: {
-          Authorization: `Key ${PI_API_KEY}`,
+          Authorization: `Key ${env.PI_API_KEY}`,
           "Content-Type": "application/json",
         },
       }
     );
 
-    const data = await res.json();
-
+    // ⚠️ NON ritorniamo il body al frontend
     if (!res.ok) {
-      console.error("Pi API error:", data);
-      return new Response(JSON.stringify(data), { status: res.status });
+      console.error("Pi API error", await res.text());
+      return new Response("Pi API error", { status: 500 });
     }
 
-    return new Response(JSON.stringify(data), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    // ✅ SOLO QUESTO SERVE AL PI SDK
+    return new Response("OK", { status: 200 });
   } catch (err) {
-    console.error("Server error:", err);
-    return new Response(
-      JSON.stringify({ error: "Server error" }),
-      { status: 500 }
-    );
+    console.error("Server error", err);
+    return new Response("Server error", { status: 500 });
   }
 }
