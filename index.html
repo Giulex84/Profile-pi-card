@@ -4,92 +4,140 @@
     <meta charset="UTF-8" />
     <title>Identity Pi Card</title>
 
+    <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script>
-  const scopes = ["username", "payments"];
-  let paymentInProgress = false;
+      Pi.init({ version: "2.0" });
+    </script>
 
-  document.getElementById("login").onclick = async () => {
-    try {
-      const auth = await Pi.authenticate(scopes, (payment) => {
-        console.log("Incomplete payment", payment);
-      });
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      button {
+        padding: 10px 16px;
+        font-size: 16px;
+        margin-top: 10px;
+      }
+      .error {
+        color: red;
+      }
+      .ok {
+        color: green;
+      }
+    </style>
+  </head>
 
-      document.getElementById("app").innerHTML = `
-        <h2>Welcome ${auth.user.username}</h2>
-        <button id="pay">PAY TEST (0.01 Pi)</button>
-        <p id="status"></p>
-      `;
+  <body>
+    <button id="login">Login with Pi</button>
+    <div id="app"></div>
 
-      document.getElementById("pay").onclick = startPayment;
-    } catch (err) {
-      console.error(err);
-      alert("Authentication failed");
-    }
-  };
+    <script>
+      // ⚠️ TUTTI GLI SCOPE VANNO QUI
+      const scopes = ["username", "payments"];
+      let paymentInProgress = false;
 
-  async function startPayment() {
-    if (paymentInProgress) return;
-    paymentInProgress = true;
-
-    document.getElementById("status").textContent =
-      "Opening Pi Wallet...";
-
-    try {
-      await Pi.createPayment({
-        amount: 0.01,
-        memo: "Identity Pi Card – Test Payment",
-        metadata: { test: true },
-
-        onReadyForServerApproval: async (paymentId) => {
-          await fetch("/api/pi", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, action: "approve" }),
-          });
-        },
-
-        onReadyForServerCompletion: async (paymentId) => {
-          await fetch("/api/pi", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, action: "complete" }),
+      // LOGIN
+      document.getElementById("login").onclick = async () => {
+        try {
+          const auth = await Pi.authenticate(scopes, (payment) => {
+            console.log("Incomplete payment", payment);
           });
 
-          document.getElementById("status").innerHTML =
-            '<span class="ok">Payment completed successfully</span>';
+          console.log("AUTH SUCCESS", auth);
 
-          paymentInProgress = false;
-        },
+          document.getElementById("app").innerHTML = `
+            <h2>Welcome ${auth.user.username}</h2>
+            <button id="pay">PAY TEST (0.01 Pi)</button>
+            <p id="status"></p>
+          `;
 
-        onCancel: async (paymentId) => {
-          await fetch("/api/pi", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, action: "cancel" }),
+          document.getElementById("pay").onclick = startPayment;
+        } catch (err) {
+          console.error("AUTH ERROR", err);
+          alert("Authentication failed");
+        }
+      };
+
+      // PAYMENT
+      async function startPayment() {
+        if (paymentInProgress) return;
+        paymentInProgress = true;
+
+        document.getElementById("status").textContent =
+          "Opening Pi Wallet...";
+
+        try {
+          await Pi.createPayment({
+            amount: 0.01,
+            memo: "Identity Pi Card – Test Payment",
+            metadata: { app: "identity-pi-card", env: "test" },
+
+            // 1️⃣ SERVER APPROVAL
+            onReadyForServerApproval: async (paymentId) => {
+              console.log("Approve payment", paymentId);
+              await fetch("/api/pi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  paymentId,
+                  action: "approve",
+                }),
+              });
+            },
+
+            // 2️⃣ SERVER COMPLETION
+            onReadyForServerCompletion: async (paymentId) => {
+              console.log("Complete payment", paymentId);
+              await fetch("/api/pi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  paymentId,
+                  action: "complete",
+                }),
+              });
+
+              document.getElementById("status").innerHTML =
+                '<span class="ok">Payment completed successfully</span>';
+
+              paymentInProgress = false;
+            },
+
+            // ❌ USER CANCEL
+            onCancel: async (paymentId) => {
+              console.log("Payment cancelled", paymentId);
+              await fetch("/api/pi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  paymentId,
+                  action: "cancel",
+                }),
+              });
+
+              document.getElementById("status").innerHTML =
+                '<span class="error">Payment cancelled</span>';
+
+              paymentInProgress = false;
+            },
+
+            // ❌ SDK / WALLET ERROR
+            onError: (err) => {
+              console.error("Payment error", err);
+              document.getElementById("status").innerHTML =
+                '<span class="error">Payment error</span>';
+              paymentInProgress = false;
+            },
           });
-
+        } catch (err) {
+          console.error("UNEXPECTED ERROR", err);
           document.getElementById("status").innerHTML =
-            '<span class="error">Payment cancelled</span>';
-
+            '<span class="error">Unexpected error</span>';
           paymentInProgress = false;
-        },
-
-        onError: (err) => {
-          console.error(err);
-          document.getElementById("status").innerHTML =
-            '<span class="error">Payment error</span>';
-          paymentInProgress = false;
-        },
-      });
-    } catch (err) {
-      console.error(err);
-      document.getElementById("status").innerHTML =
-        '<span class="error">Unexpected error</span>';
-      paymentInProgress = false;
-    }
-  }
-</script>
-
+        }
+      }
+    </script>
   </body>
 </html>
