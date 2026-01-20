@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Profile Pi Card</title>
+  <title>Identity Pi Card</title>
 
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <script>
@@ -10,10 +10,21 @@
   </script>
 
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    button { padding: 10px 16px; font-size: 16px; }
-    .error { color: red; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
     .ok { color: green; }
+    .error { color: red; }
   </style>
 </head>
 
@@ -32,20 +43,17 @@
         document.getElementById("app").innerHTML = `
           <h2>Welcome ${auth.user.username}</h2>
           <button id="pay">PAY TEST (0.01 Pi)</button>
-          <p id="status"></p>
+          <div id="status"></div>
         `;
         document.getElementById("pay").onclick = startPayment;
-      } catch (e) {
+      } catch (err) {
         alert("Authentication failed");
-        console.error(e);
+        console.error(err);
       }
     };
 
     async function startPayment() {
-      if (paymentInProgress) {
-        alert("Payment already in progress");
-        return;
-      }
+      if (paymentInProgress) return;
 
       paymentInProgress = true;
       document.getElementById("status").textContent = "Creating payment...";
@@ -53,8 +61,8 @@
       try {
         await Pi.createPayment({
           amount: 0.01,
-          memo: "Profile Pi Card Test",
-          metadata: { test: true },
+          memo: "Identity Pi Card - Test Payment",
+          metadata: { app: "identity-pi-card", test: true },
 
           onReadyForServerApproval: async (paymentId) => {
             await fetch("/api/pi", {
@@ -78,8 +86,7 @@
             });
 
             document.getElementById("status").innerHTML =
-              "<span class='ok'>Payment completed successfully</span>";
-
+              '<span class="ok">Payment completed successfully</span>';
             paymentInProgress = false;
           },
 
@@ -94,20 +101,21 @@
             });
 
             document.getElementById("status").innerHTML =
-              "<span class='error'>Payment cancelled</span>";
-
+              '<span class="error">Payment cancelled</span>';
             paymentInProgress = false;
           },
 
           onError: (err) => {
             console.error(err);
             document.getElementById("status").innerHTML =
-              "<span class='error'>Payment error</span>";
+              '<span class="error">Payment error</span>';
             paymentInProgress = false;
           }
         });
       } catch (err) {
         console.error(err);
+        document.getElementById("status").innerHTML =
+          '<span class="error">Unexpected error</span>';
         paymentInProgress = false;
       }
     }
