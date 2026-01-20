@@ -17,16 +17,15 @@ export async function onRequestPost({ request, env }: any) {
       }
     );
 
-    // ⚠️ NON ritorniamo il body al frontend
     if (!res.ok) {
-      console.error("Pi API error", await res.text());
+      console.error("Pi API error:", await res.text());
       return new Response("Pi API error", { status: 500 });
     }
 
-    // ✅ SOLO QUESTO SERVE AL PI SDK
+    // ✅ SDK richiede SOLO status 200
     return new Response("OK", { status: 200 });
   } catch (err) {
-    console.error("Server error", err);
+    console.error("Server error:", err);
     return new Response("Server error", { status: 500 });
   }
 }
