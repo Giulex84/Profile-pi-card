@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Identity</title>
+    <title>Identity Card</title>
 
     <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
@@ -20,12 +20,12 @@
         font-size: 16px;
         margin-top: 10px;
       }
-      .error {
-        color: red;
-        margin-top: 10px;
-      }
       .ok {
         color: green;
+        margin-top: 10px;
+      }
+      .error {
+        color: red;
         margin-top: 10px;
       }
     </style>
@@ -36,48 +36,44 @@
     <div id="app"></div>
 
     <script>
-      // 🔐 SCOPES NECESSARI PER AUTH + PAGAMENTI
       const scopes = ["username", "payments"];
+      const API_URL = "https://identitycard.pages.dev/api/pi";
 
-      // 🌐 URL ASSOLUTO DEL BACKEND DI QUESTA APP
-      const API_URL = "https://identity-cfw.pages.dev/api/pi";
+      let paymentInProgress = false;
 
-      // -------- AUTH --------
       document.getElementById("login").onclick = async () => {
         try {
-          const auth = await Pi.authenticate(scopes, (payment) => {
-            console.log("Incomplete payment callback", payment);
-          });
-
-          console.log("AUTH SUCCESS", auth);
-
+          const auth = await Pi.authenticate(scopes, () => {});
           document.getElementById("app").innerHTML = `
             <h2>Welcome ${auth.user.username}</h2>
             <button id="pay">PAY TEST (0.01 Pi)</button>
             <div id="status"></div>
           `;
-
           document.getElementById("pay").onclick = startPayment;
-        } catch (err) {
-          console.error("AUTH ERROR", err);
+        } catch {
           alert("Authentication failed");
         }
       };
 
-      // -------- PAYMENT FLOW COMPLETO --------
       async function startPayment() {
+        if (paymentInProgress) return;
+
+        paymentInProgress = true;
+
+        const payBtn = document.getElementById("pay");
         const status = document.getElementById("status");
+
+        payBtn.disabled = true;
         status.textContent = "Creating payment...";
 
         try {
           await Pi.createPayment(
             {
               amount: 0.01,
-              memo: "Identity test payment",
-              metadata: { test: true },
+              memo: "Identity Card test payment",
+              metadata: { app: "identity-card", test: true },
             },
             {
-              // ✅ STEP 1 — APPROVE (backend)
               onReadyForServerApproval: async (paymentId) => {
                 console.log("APPROVE", paymentId);
                 await fetch(API_URL, {
@@ -90,7 +86,6 @@
                 });
               },
 
-              // ✅ STEP 2 — COMPLETE (backend)
               onReadyForServerCompletion: async (paymentId) => {
                 console.log("COMPLETE", paymentId);
                 await fetch(API_URL, {
@@ -103,12 +98,13 @@
                 });
 
                 status.innerHTML =
-                  '<span class="ok">Payment completed successfully</span>';
+                  '<div class="ok">Payment completed successfully</div>';
               },
 
-              // ❌ CANCEL (utente annulla nel wallet)
               onCancel: async (paymentId) => {
-                console.log("CANCEL", paymentId);
+                paymentInProgress = false;
+                payBtn.disabled = false;
+
                 await fetch(API_URL, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -119,21 +115,24 @@
                 });
 
                 status.innerHTML =
-                  '<span class="error">Payment cancelled</span>';
+                  '<div class="error">Payment cancelled</div>';
               },
 
-              // ❌ ERROR (errore nel wallet)
               onError: (err) => {
-                console.error("PAYMENT ERROR", err);
+                console.error(err);
+                paymentInProgress = false;
+                payBtn.disabled = false;
                 status.innerHTML =
-                  '<span class="error">Payment error</span>';
+                  '<div class="error">Payment error</div>';
               },
             }
           );
         } catch (err) {
-          console.error("UNEXPECTED ERROR", err);
+          console.error(err);
+          paymentInProgress = false;
+          payBtn.disabled = false;
           status.innerHTML =
-            '<span class="error">Unexpected error</span>';
+            '<div class="error">Unexpected error</div>';
         }
       }
     </script>
