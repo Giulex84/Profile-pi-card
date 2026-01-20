@@ -16,14 +16,22 @@
 
   <script>
     const scopes = ["username", "payments"];
+    let paymentInProgress = false;
 
-    document.getElementById("login").onclick = async () => {
+    const loginBtn = document.getElementById("login");
+    const app = document.getElementById("app");
+
+    loginBtn.onclick = async () => {
       try {
         const auth = await Pi.authenticate(scopes, () => {});
-        document.getElementById("app").innerHTML = `
-          <h3>Welcome ${auth.user.username}</h3>
-          <button id="pay">PAY TEST</button>
+        loginBtn.style.display = "none";
+
+        app.innerHTML = `
+          <h2>Welcome ${auth.user.username}</h2>
+          <button id="pay">PAY TEST (0.01 Pi)</button>
+          <p id="status"></p>
         `;
+
         document.getElementById("pay").onclick = startPayment;
       } catch (e) {
         alert("Authentication failed");
@@ -31,45 +39,57 @@
       }
     };
 
-    async function callServer(paymentId, action) {
+    async function serverAction(paymentId, action) {
       const res = await fetch("/api/pi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, action }),
+        body: JSON.stringify({ paymentId, action })
       });
 
       if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err);
+        throw new Error(await res.text());
       }
 
       return res.json();
     }
 
     function startPayment() {
-      Pi.createPayment({
-        amount: 0.01,
-        memo: "Test payment Profile Pi Card",
-        metadata: { test: true },
+      if (paymentInProgress) return;
+      paymentInProgress = true;
 
-        onReadyForServerApproval: async (paymentId) => {
-          await callServer(paymentId, "approve");
+      document.getElementById("status").innerText = "Opening Pi Wallet...";
+
+      Pi.createPayment(
+        {
+          amount: 0.01,
+          memo: "Profile Pi Card test payment",
+          metadata: { test: true }
         },
+        {
+          onReadyForServerApproval: async (paymentId) => {
+            document.getElementById("status").innerText = "Approving payment...";
+            await serverAction(paymentId, "approve");
+          },
 
-        onReadyForServerCompletion: async (paymentId) => {
-          await callServer(paymentId, "complete");
-          alert("Payment completed successfully");
-        },
+          onReadyForServerCompletion: async (paymentId) => {
+            document.getElementById("status").innerText = "Completing payment...";
+            await serverAction(paymentId, "complete");
+            document.getElementById("status").innerText = "✅ Payment completed";
+            paymentInProgress = false;
+          },
 
-        onCancel: () => {
-          alert("Payment cancelled");
-        },
+          onCancel: () => {
+            document.getElementById("status").innerText = "❌ Payment cancelled";
+            paymentInProgress = false;
+          },
 
-        onError: (err) => {
-          console.error(err);
-          alert("Payment error");
+          onError: (err) => {
+            console.error(err);
+            document.getElementById("status").innerText = "⚠️ Payment error";
+            paymentInProgress = false;
+          }
         }
-      });
+      );
     }
   </script>
 </body>
