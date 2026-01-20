@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Identity Card</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Pi SDK -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
@@ -10,193 +11,177 @@
     Pi.init({ version: "2.0" });
   </script>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <style>
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: radial-gradient(circle at top, #0f172a, #020617);
+      background: linear-gradient(135deg, #020617, #0f172a);
       color: #e5e7eb;
-      padding: 24px;
-    }
-
-    h1 {
-      font-size: 32px;
-      margin-bottom: 8px;
-    }
-
-    p {
-      color: #9ca3af;
-      line-height: 1.6;
-    }
-
-    .card {
-      margin-top: 32px;
-      background: linear-gradient(145deg, #020617, #020617dd);
-      border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-      max-width: 420px;
-    }
-
-    .row {
+      min-height: 100vh;
       display: flex;
-      justify-content: space-between;
-      margin: 12px 0;
-    }
-
-    .badge {
-      background: #16a34a;
-      padding: 6px 12px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #020617;
-    }
-
-    button {
-      margin-top: 24px;
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      background: linear-gradient(135deg, #6366f1, #22d3ee);
-      color: #020617;
-      font-weight: 700;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .links {
-      margin-top: 40px;
-      display: flex;
-      gap: 16px;
-      font-size: 14px;
-    }
-
-    .links a {
-      color: #93c5fd;
-      text-decoration: none;
-    }
-
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: none;
       justify-content: center;
       align-items: center;
-      z-index: 1000;
-    }
-
-    .modal-content {
-      background: #020617;
       padding: 24px;
-      border-radius: 16px;
-      max-width: 520px;
-      width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
     }
-
-    .close {
-      text-align: right;
+    .app {
+      max-width: 460px;
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    }
+    h1 { margin-top: 0; font-size: 28px; }
+    p { line-height: 1.6; opacity: .9; }
+    button {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      background: #6366f1;
+      color: white;
       cursor: pointer;
-      font-size: 14px;
-      color: #93c5fd;
+      margin-top: 16px;
     }
+    .card {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.35);
+    }
+    .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .badge {
+      background: #22c55e;
+      color: #022c22;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .progress {
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 10px;
+      margin-top: 6px;
+    }
+    .progress > div { height: 100%; background: #22c55e; }
+    .muted { font-size: 14px; opacity: .7; margin-top: 12px; }
+    .links { margin-top: 24px; font-size: 14px; }
+    .links a { color: #93c5fd; margin-right: 12px; text-decoration: none; }
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      display: none; justify-content: center; align-items: center; z-index: 1000;
+    }
+    .modal-content {
+      background: #020617; padding: 24px; border-radius: 16px;
+      max-width: 520px; width: 90%; max-height: 80vh; overflow-y: auto;
+    }
+    .close { text-align: right; cursor: pointer; color: #93c5fd; font-size: 14px; }
   </style>
 </head>
 
 <body>
+  <div class="app" id="app">
+    <h1>Identity Card</h1>
+    <p>Build your Pi ecosystem identity and track your activity reputation.</p>
+    <button id="login">Login with Pi</button>
 
-  <h1>Identity Card</h1>
-  <p>
-    A Pi Network dApp that visualizes your ecosystem presence, reputation signals,
-    and future on-chain identity layers.
-  </p>
-
-  <button id="loginBtn">Login with Pi</button>
-
-  <div id="app"></div>
-
-  <div class="links">
-    <a href="#" onclick="openModal('privacy')">Privacy Policy</a>
-    <a href="#" onclick="openModal('terms')">Terms of Service</a>
+    <div class="links">
+      <a href="#" onclick="openModal('privacy')">Privacy Policy</a>
+      <a href="#" onclick="openModal('terms')">Terms of Service</a>
+    </div>
   </div>
 
-  <!-- PRIVACY MODAL -->
+  <!-- PRIVACY -->
   <div id="privacyModal" class="modal">
     <div class="modal-content">
       <div class="close" onclick="closeModal()">Close</div>
       <h2>Privacy Policy</h2>
       <p>
-        Identity Card does not collect, store, or process personal data.
+        Identity Card does not collect or store personal data.
         Authentication is handled exclusively by Pi Network.
-        No user data is persisted or shared.
+        No information is shared with third parties.
       </p>
     </div>
   </div>
 
-  <!-- TERMS MODAL -->
+  <!-- TERMS -->
   <div id="termsModal" class="modal">
     <div class="modal-content">
       <div class="close" onclick="closeModal()">Close</div>
       <h2>Terms of Service</h2>
       <p>
-        Identity Card provides informational identity visualizations.
-        Scores, badges, and status indicators are illustrative and non-binding.
-        The service is provided “as is” without warranties.
+        Identity Card provides local identity and activity reputation previews.
+        Scores are informational and non-binding.
+        The service is provided “as is”.
       </p>
     </div>
   </div>
 
   <script>
-    function openModal(type) {
-      document.getElementById(type + "Modal").style.display = "flex";
+    function openModal(t){document.getElementById(t+'Modal').style.display='flex'}
+    function closeModal(){document.querySelectorAll('.modal').forEach(m=>m.style.display='none')}
+
+    const BASE_SCORE = 50;
+
+    function getState(){
+      return {
+        created: localStorage.getItem("created"),
+        days: parseInt(localStorage.getItem("days")||"0"),
+        last: localStorage.getItem("last")
+      };
     }
 
-    function closeModal() {
-      document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
+    function saveState(s){
+      localStorage.setItem("created", s.created);
+      localStorage.setItem("days", s.days);
+      localStorage.setItem("last", s.last);
     }
 
-    document.getElementById("loginBtn").onclick = async () => {
-      try {
-        const auth = await Pi.authenticate(["username"], () => {});
-        document.getElementById("loginBtn").style.display = "none";
+    function computeScore(s){
+      return Math.min(100, BASE_SCORE + s.days);
+    }
 
-        document.getElementById("app").innerHTML = `
-          <div class="card">
-            <h2>Your Identity Card</h2>
-            <div class="row">
-              <strong>Username</strong>
-              <span>${auth.user.username}</span>
-            </div>
-            <div class="row">
-              <strong>Reputation Score</strong>
-              <span>${80 + Math.floor(Math.random() * 20)}/100</span>
-            </div>
-            <div class="row">
-              <strong>Status</strong>
-              <span class="badge">Pioneer</span>
-            </div>
-            <p style="margin-top:16px;font-size:14px;">
-              Coming soon: verified badges, ecosystem signals,
-              on-chain attestations, and dApp integrations.
-            </p>
-          </div>
-        `;
-      } catch (err) {
-        alert("Authentication failed");
+    document.getElementById("login").onclick = async () => {
+      const auth = await Pi.authenticate(["username"], ()=>{});
+      const today = new Date().toDateString();
+      let state = getState();
+
+      if(!state.created){
+        state.created = today;
+        state.days = 1;
+        state.last = today;
+      } else if(state.last !== today){
+        state.days += 1;
+        state.last = today;
       }
+
+      saveState(state);
+      const score = computeScore(state);
+
+      document.getElementById("app").innerHTML = `
+        <h1>Your Identity Card</h1>
+
+        <div class="card">
+          <div class="row"><strong>Username</strong><span>${auth.user.username}</span></div>
+          <div class="row"><strong>Reputation</strong><span>${score}/100</span></div>
+          <div class="row"><strong>Status</strong><span class="badge">${score>=80?"Trusted Pioneer":"Active Pioneer"}</span></div>
+          <div class="progress"><div style="width:${score}%"></div></div>
+        </div>
+
+        <div class="muted">
+          Reputation is based on your activity in this app.
+          Future versions may enable verified upgrades.
+        </div>
+
+        <div class="links">
+          <a href="#" onclick="openModal('privacy')">Privacy Policy</a>
+          <a href="#" onclick="openModal('terms')">Terms of Service</a>
+        </div>
+      `;
     };
   </script>
-
 </body>
 </html>
