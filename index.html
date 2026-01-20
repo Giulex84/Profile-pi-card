@@ -1,140 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Identity Card</title>
+<head>
+  <meta charset="UTF-8" />
+  <title>Identity Card</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Pi SDK -->
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <script>
-      Pi.init({ version: "2.0" });
-    </script>
+  <!-- Pi SDK -->
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <script>
+    Pi.init({ version: "2.0" });
+  </script>
 
-    <style>
-      body {
-        font-family: sans-serif;
-        padding: 20px;
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 24px;
+      max-width: 720px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #cbd5f5;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+
+    button {
+      background: #6366f1;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 16px;
+      color: white;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    button:disabled {
+      background: #334155;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 16px;
+      font-weight: 500;
+    }
+
+    .ok { color: #22c55e; }
+    .err { color: #ef4444; }
+    .muted { color: #94a3b8; }
+  </style>
+</head>
+
+<body>
+  <h1>Identity Card</h1>
+  <p>
+    Identity Card is a Pi Network dApp that lets users authenticate securely
+    and unlock premium identity features through Pi payments.
+  </p>
+
+  <div class="card" id="auth-card">
+    <p class="muted">Step 1 — Authenticate with Pi</p>
+    <button id="login-btn">Login with Pi</button>
+  </div>
+
+  <div class="card" id="app-card" style="display:none">
+    <p id="welcome"></p>
+    <p class="muted">
+      Step 2 — Activate your Identity Card by completing a Pi payment.
+    </p>
+    <button id="pay-btn">Activate Identity Card (0.01 Pi)</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    const SCOPES = ["username", "payments"];
+    const API_URL = "https://identitycard.pages.dev/api/pi";
+
+    let paymentInProgress = false;
+
+    const loginBtn = document.getElementById("login-btn");
+    const payBtn = document.getElementById("pay-btn");
+    const statusEl = document.getElementById("status");
+
+    loginBtn.onclick = async () => {
+      try {
+        const auth = await Pi.authenticate(SCOPES, () => {});
+        document.getElementById("auth-card").style.display = "none";
+        document.getElementById("app-card").style.display = "block";
+        document.getElementById("welcome").textContent =
+          `Welcome ${auth.user.username}.`;
+      } catch {
+        alert("Pi authentication failed.");
       }
-      button {
-        padding: 10px 16px;
-        font-size: 16px;
-        margin-top: 10px;
-      }
-      .ok {
-        color: green;
-        margin-top: 10px;
-      }
-      .error {
-        color: red;
-        margin-top: 10px;
-      }
-    </style>
-  </head>
+    };
 
-  <body>
-    <button id="login">Login with Pi</button>
-    <div id="app"></div>
+    payBtn.onclick = async () => {
+      if (paymentInProgress) return;
 
-    <script>
-      const scopes = ["username", "payments"];
-      const API_URL = "https://identitycard.pages.dev/api/pi";
+      paymentInProgress = true;
+      payBtn.disabled = true;
+      statusEl.textContent = "Waiting for Pi Wallet confirmation…";
+      statusEl.className = "status muted";
 
-      let paymentInProgress = false;
-
-      document.getElementById("login").onclick = async () => {
-        try {
-          const auth = await Pi.authenticate(scopes, () => {});
-          document.getElementById("app").innerHTML = `
-            <h2>Welcome ${auth.user.username}</h2>
-            <button id="pay">PAY TEST (0.01 Pi)</button>
-            <div id="status"></div>
-          `;
-          document.getElementById("pay").onclick = startPayment;
-        } catch {
-          alert("Authentication failed");
-        }
-      };
-
-      async function startPayment() {
-        if (paymentInProgress) return;
-
-        paymentInProgress = true;
-
-        const payBtn = document.getElementById("pay");
-        const status = document.getElementById("status");
-
-        payBtn.disabled = true;
-        status.textContent = "Creating payment...";
-
-        try {
-          await Pi.createPayment(
-            {
-              amount: 0.01,
-              memo: "Identity Card test payment",
-              metadata: { app: "identity-card", test: true },
+      try {
+        await Pi.createPayment(
+          {
+            amount: 0.01,
+            memo: "Identity Card activation",
+            metadata: { feature: "identity-card" }
+          },
+          {
+            onReadyForServerApproval: async (paymentId) => {
+              await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentId, action: "approve" })
+              });
             },
-            {
-              onReadyForServerApproval: async (paymentId) => {
-                console.log("APPROVE", paymentId);
-                await fetch(API_URL, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    paymentId,
-                    action: "approve",
-                  }),
-                });
-              },
 
-              onReadyForServerCompletion: async (paymentId) => {
-                console.log("COMPLETE", paymentId);
-                await fetch(API_URL, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    paymentId,
-                    action: "complete",
-                  }),
-                });
+            onReadyForServerCompletion: async (paymentId) => {
+              await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentId, action: "complete" })
+              });
 
-                status.innerHTML =
-                  '<div class="ok">Payment completed successfully</div>';
-              },
+              statusEl.textContent =
+                "Identity Card activated successfully.";
+              statusEl.className = "status ok";
+            },
 
-              onCancel: async (paymentId) => {
-                paymentInProgress = false;
-                payBtn.disabled = false;
+            onCancel: async (paymentId) => {
+              paymentInProgress = false;
+              payBtn.disabled = false;
 
-                await fetch(API_URL, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    paymentId,
-                    action: "cancel",
-                  }),
-                });
+              await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentId, action: "cancel" })
+              });
 
-                status.innerHTML =
-                  '<div class="error">Payment cancelled</div>';
-              },
+              statusEl.textContent = "Payment cancelled.";
+              statusEl.className = "status err";
+            },
 
-              onError: (err) => {
-                console.error(err);
-                paymentInProgress = false;
-                payBtn.disabled = false;
-                status.innerHTML =
-                  '<div class="error">Payment error</div>';
-              },
+            onError: () => {
+              paymentInProgress = false;
+              payBtn.disabled = false;
+              statusEl.textContent = "Payment error.";
+              statusEl.className = "status err";
             }
-          );
-        } catch (err) {
-          console.error(err);
-          paymentInProgress = false;
-          payBtn.disabled = false;
-          status.innerHTML =
-            '<div class="error">Unexpected error</div>';
-        }
+          }
+        );
+      } catch {
+        paymentInProgress = false;
+        payBtn.disabled = false;
+        statusEl.textContent = "Unexpected error.";
+        statusEl.className = "status err";
       }
-    </script>
-  </body>
+    };
+  </script>
+</body>
 </html>
