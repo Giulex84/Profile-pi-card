@@ -21,11 +21,17 @@
       try {
         const auth = await Pi.authenticate(scopes, () => {});
         document.getElementById("app").innerHTML = `
-          <h3>Welcome ${auth.user.username}</h3>
-          <button id="pay">Test Payment (0.01 Pi)</button>
-        `;
+  <h3>Welcome ${auth.user.username}</h3>
+  <button id="pay">PAY TEST</button>
+`;
 
-        document.getElementById("pay").onclick = startPayment;
+document.getElementById("pay").onclick = async () => {
+  alert("CLICK OK");
+  await Pi.createPayment({
+    amount: 0.01,
+    memo: "FORCED TEST",
+  });
+};
       } catch (e) {
         alert("Authentication failed");
         console.error(e);
