@@ -8,29 +8,21 @@
   <script>
     Pi.init({ version: "2.0" });
   </script>
-
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    button { padding: 10px 16px; font-size: 16px; }
-  </style>
 </head>
 
 <body>
-
   <button id="login">Login with Pi</button>
   <div id="app"></div>
 
   <script>
     const scopes = ["username", "payments"];
-    let paymentInProgress = false;
 
     document.getElementById("login").onclick = async () => {
       try {
         const auth = await Pi.authenticate(scopes, () => {});
         document.getElementById("app").innerHTML = `
-          <h2>Welcome ${auth.user.username}</h2>
-          <button id="pay">Pay Test (0.01 Pi)</button>
-          <div id="status"></div>
+          <h3>Welcome ${auth.user.username}</h3>
+          <button id="pay">PAY TEST</button>
         `;
         document.getElementById("pay").onclick = startPayment;
       } catch (e) {
@@ -39,58 +31,46 @@
       }
     };
 
-    async function startPayment() {
-      if (paymentInProgress) {
-        alert("Payment already in progress");
-        return;
+    async function callServer(paymentId, action) {
+      const res = await fetch("/api/pi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId, action }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err);
       }
 
-      paymentInProgress = true;
-      document.getElementById("pay").disabled = true;
-      document.getElementById("status").innerText = "Opening Pi Wallet…";
+      return res.json();
+    }
 
+    function startPayment() {
       Pi.createPayment({
         amount: 0.01,
         memo: "Test payment Profile Pi Card",
         metadata: { test: true },
 
         onReadyForServerApproval: async (paymentId) => {
-          await fetch("/api/pi", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, action: "approve" })
-          });
+          await callServer(paymentId, "approve");
         },
 
         onReadyForServerCompletion: async (paymentId) => {
-          await fetch("/api/pi", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, action: "complete" })
-          });
-
-          document.getElementById("status").innerText =
-            "✅ Payment completed successfully";
-          paymentInProgress = false;
+          await callServer(paymentId, "complete");
+          alert("Payment completed successfully");
         },
 
         onCancel: () => {
-          document.getElementById("status").innerText =
-            "❌ Payment cancelled";
-          paymentInProgress = false;
-          document.getElementById("pay").disabled = false;
+          alert("Payment cancelled");
         },
 
         onError: (err) => {
           console.error(err);
-          document.getElementById("status").innerText =
-            "⚠️ Payment error";
-          paymentInProgress = false;
-          document.getElementById("pay").disabled = false;
+          alert("Payment error");
         }
       });
     }
   </script>
-
 </body>
 </html>
